@@ -1,14 +1,18 @@
 # MIA-HeatMap
 Minimum Information About - HeatMap 
 
-Is a shiny app that lets you create a HeatMap with only the minimum knowledge of heatmaps with no coding experience. 
+Is a shiny app that lets you create a HeatMap with only the minimum knowledge of heatmaps with no coding experience. The user may upload their own data or use the provided example data to generate the HeatMap using any distance or clustering method of their choice. The column and row dendrograms are displayed individually in separate tabs. If you wish to know the samples within a cluster, this information can be downloaded using the cutree download button inside the column dendrogram tab. The novelty about this app is that it can also provide a pvalue to test significance between the clusters.
 
+Installations
 Firstly, you should have the most recent version of R or RStudio.
 Next install required packages. Cut and paste what's below in an R session.
 
 install.packages(c("shiny", "shinyFiles", "openxlsx", "openxlsx", "gplots", "reshape", "scales", "RColorBrewer", "stats", "graphics", "ggplot2", "gdata", "plyr"))
+
 source("http://bioconductor.org/biocLite.R")
+
 biocLite("impute")
+
 
 You only need to do this once.
 
