@@ -42,6 +42,7 @@ c) Remaining Columns. These should contain the expression measurements as number
 | YWHAE|201020_at   | A      | 1.98    |  7.93    | 2.76	  | 9.11     |	8.46   | 0.98     |	5.98    |	8.19     |	8.91   |	5.98   |
 | YWHAH|33323_r_at  | A      | 8.02    |  8       | 3.19	  | 11.86    |	6.54   | 8.17     |	2       |	0.99     |	2      |	1.17   |
 
+
 ##### Terms of Use
 This tool was prepared by members of the Winship Biostatistics and Bioinformatics Shared Resource (BBISR) of Emory University. 
 Use of either should properly acknowledge the Winship BBISR in publications, abstracts, presentations, posters, grant proposals, etc. by using the following text	
