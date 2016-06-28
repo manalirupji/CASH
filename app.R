@@ -178,13 +178,13 @@ server <- function(input, output, session){
   output$downloadEx <- downloadHandler(
     filename= function() {paste('Example data set_meth data.csv')}, 
     content = function(file) {
-      d <- readRDS("data/Example.data.rds")
+      d <- readRDS("Example.data.rds")
       write.csv(d, file, row.names = FALSE) }
   )
   
   data_input <- reactive({
     if(input$file1 == 'Example'){
-      d <- readRDS("data/Example.data.rds")
+      d <- readRDS("Example.data.rds")
     }
     else if(input$file1 == 'load_my_own'){
       inFile <- input$file2
@@ -569,7 +569,7 @@ server <- function(input, output, session){
         if(input$pvalue_cal == TRUE) 
         {
         if(input$file3 == 'Meth.Example'){
-            s_data <- readRDS("data/Meth450K.data.rds")
+            s_data <- readRDS("Meth450K.data.rds")
            }
         else {
            inFile2 <- input$file4
