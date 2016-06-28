@@ -1,7 +1,7 @@
 # MIA-HeatMap
-Minimum Information About - HeatMap
+Minimum Information About - HeatMap 
 
-Is a shiny app that lets you create HeatMap with only the minimum knowledge of heatmaps. The user doesn't need to have any coding experience. This tool is written in R and can be run using the next few lines of code in the R console:
+Is a shiny app that lets you create a HeatMap with only the minimum knowledge of heatmaps with no coding experience. 
 
 Firstly, you should have the most recent version of R or RStudio.
 Next install required packages. Cut and paste what's below in an R session.
