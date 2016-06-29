@@ -3,7 +3,7 @@ contingencyfun <- function(memb)
   memb[,1] <- gsub("[[:punct:]]", "-", memb[,1])
   input <- cbind(apply(memb[1], 1, function(x) ifelse(grepl("-G1", x), "Group1", "Group2")), memb) #check input is from shiny?
   
-  mytable <- table(input[,3], input[,1])
+  mytable <- table(input[,4], input[,1])
   mytable <- as.data.frame.matrix(mytable)
   df <- unmatrix(mytable,byrow=T)
   return(df)
@@ -14,9 +14,9 @@ pvaluefunc <- function(mytable)
 {
   m <- t(matrix(mytable, 2, 2))
   #colnames(m) <- c("Normal", "Tumor")
-  if(any(m)<5) {
+  if(length(m[m<5]) != 0) {
     pvalue <- fisher.test(m)$p.value
-  } else {
+  }else {
     pvalue <- chisq.test(m)$p.value
   }
   return(pvalue)
@@ -58,7 +58,7 @@ bootstrapfun <- function(obsdata, samplingdata, distmethod, clustmethod, scale, 
   
   obstable <- contingencyfun(obsdata)
   pobs <- pvaluefunc(obstable)
-  if(pobs <=0.05)
+  if(pobs <= 0.05)
   {
     contab <- list()
     my.matrix <- matrix()
