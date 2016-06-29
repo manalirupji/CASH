@@ -109,7 +109,7 @@ bootstrapfun <- function(obsdata, samplingdata, distmethod, clustmethod, scale, 
         memb <- cutree(hc, k)[hc$order]
         # memb <- cutree(as.hclust(hm$colDendrogram), k)[as.hclust(hm$colDendrogram)$order]
         memb <- cbind(Row.Names = rownames(memb), memb, row.names = NULL)
-        memb <- cbind.data.frame(rownames(memb), memb) 
+        memb <- cbind.data.frame(rownames(memb),1:nrow(memb), memb) 
         memb
         
         contab[[i]] <- contingencyfun(memb)
@@ -117,7 +117,7 @@ bootstrapfun <- function(obsdata, samplingdata, distmethod, clustmethod, scale, 
       
       # summarize each iteration row wise in a data frame
       my.matrix <- data.frame(matrix(unlist(contab), nrow=n.iter, byrow=T)) #no. of iterations
-      my.matrix$p.value <- apply(my.matrix, 1, function(x) pvaluefunc(as.matrix(my.matrix)))
+      my.matrix$p.value <- apply(my.matrix, 1, function(x) pvaluefunc(x))
       # my.matrix$Test <- length(which(my.matrix$p.value >= pobs))
       
       #calculate the pvalue to test significance of the CpG sites compared to  random sets of the same no. in separating T from N
