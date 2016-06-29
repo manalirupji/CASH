@@ -17,22 +17,24 @@ ui <- fluidPage(
   fluidRow(
     column(3,
            wellPanel(
-             selectInput("file1", label= "Select an example dataset or upload your own with 'Load my own data.'", 
-                         choices = c("Example Data File" ="Example", "Load my own data" = "load_my_own")),
-             conditionalPanel("input.file1 == 'load_my_own'", 
+             selectInput("file1",label= "Select an example dataset or upload your own with 'Load my own data.'", 
+                         choices = c("Example Data File"="Example", "Load my own data" = "load_my_own")),
+             conditionalPanel("input.file1 == 'load_my_own'",
                               fileInput('file2', 'Choose file to upload (maximum size 10 MB)', accept=c('.xlsx','text/csv', 'text/comma-separated-values,text/plain', '.csv'))), 
-             conditionalPanel("input.file1 == 'Example'", 
+             conditionalPanel("input.file1 == 'Example'",
                               downloadButton('downloadEx', 'Download Example DataSet')),
              helpText("After data selection, to view generated HeatMap, click on HeatMap tab.")
            ),
+         
            wellPanel(  
              h4("Heat Map Options"),
              radioButtons("norm", "Normalization type",
                           c("row", "col", "both", "none")),
              sliderInput("inSlider", "Scale Range",
                          min = -10, max = 20, value = c(-2, 2)),
+             conditionalPanel("input.conditionedPanels==1 | input.conditionedPanels==2", 
              sliderInput("inSlider2", "Plot Margin dimensions",
-                         min = 0, max = 15, value = c(7, 9))
+                         min = 0, max = 15, value = c(7, 9)) )
            ),
            wellPanel(  
              h4("Clustering Measures"),
@@ -44,57 +46,65 @@ ui <- fluidPage(
                           c("TRUE", "FALSE")),
              radioButtons("clust_bycol", "Col dendrogram",
                           c("TRUE", "FALSE")),
+             conditionalPanel("input.conditionedPanels==2", 
              radioButtons("dispRow", "Display Row labels?:", 
                           c("No", "Yes")),
              sliderInput("size1", "If yes, Row Label font size", min = 0.01, max = 3, value = 0.5),
              radioButtons("dispCol", "Display Col labels?:", 
                           c("No", "Yes")),
-             sliderInput("size2", "If yes, Col Label font size", min = 0.01, max = 3, value = 0.5),
-             radioButtons("cutcolden", "Cut Col dendrogram?:", 
-                          c("No" = FALSE, "Yes" = TRUE)),
-             conditionalPanel("input.cutcolden == 'TRUE'", numericInput("cuttree", "Cut Col Dendrogram at:", 2)),
-             conditionalPanel("input.cutcolden == 'TRUE'",
+             sliderInput("size2", "If yes, Col Label font size", min = 0.01, max = 3, value = 0.5) ),
+             conditionalPanel("input.conditionedPanels==3", radioButtons("cutcolden", "Cut Col dendrogram?:", 
+                          c("No" = FALSE, "Yes" = TRUE)) 
+                          ),
+             conditionalPanel("input.conditionedPanels==3 & input.cutcolden == 'TRUE'", numericInput("cuttree", "Cut Col Dendrogram at:", 2)),
+             conditionalPanel("input.conditionedPanels==3 & input.cutcolden == 'TRUE'",
                               radioButtons("pvalue_cal", "Assess Gene set significance in separation of specimens into 2 clusters?:", c("No" = FALSE, "Yes" = TRUE))),
-             conditionalPanel("input.cutcolden == 'TRUE' && input.pvalue_cal == 'TRUE'" , 
+             conditionalPanel("input.conditionedPanels==3 & input.cutcolden == 'TRUE' & input.pvalue_cal == 'TRUE'" , 
                          selectInput("file3", label= "Select a dataset or upload your own with 'Load my own data.'", 
                          choices = c("Meth Sampling Data" ="Meth.Example", "Load my own sampling data" = "load_my_own_s_data"))),
-             conditionalPanel("input.file3 == 'load_my_own_s_data'",
+             conditionalPanel("input.conditionedPanels==3 & input.file3 == 'load_my_own_s_data'",
                               fileInput('file4', 'Choose file to upload to sample from to estimate significance of separation', accept=c('.xlsx','text/csv', 'text/comma-separated-values,text/plain', '.csv'))) ,
-             conditionalPanel("input.pvalue_cal == 'TRUE'", 
+             conditionalPanel("input.conditionedPanels==3 & input.pvalue_cal == 'TRUE'", 
                               numericInput("n", "Sample size for bootstrap:", 1000)),
-             conditionalPanel("input.pvalue_cal == 'TRUE'", 
+             conditionalPanel("input.conditionedPanels==3 & input.pvalue_cal == 'TRUE'", 
                               numericInput("n_iter", "No. of iterations for bootstrap:", 1000)),
              
-             conditionalPanel("input.pvalue_cal == 'TRUE'", actionButton("goButton", "Go!")),
+             conditionalPanel("input.conditionedPanels==3 & input.pvalue_cal == 'TRUE'", actionButton("goButton", "Go!")),
              #conditionalPanel(condition="$('html').hasClass('shiny-busy')",
             #                  tags$div("Loading...",id="loadmessage")),
-             conditionalPanel("input.pvalue_cal == 'TRUE'", p("Click the button to update the value displayed in the main panel.")),
-             sliderInput("inSlider3", "Download dimensions",
-                         min = 600, max = 2400, value = c(600, 600))
-           ),
+             conditionalPanel("input.conditionedPanels==3 & input.pvalue_cal == 'TRUE'", p("Click the button to update the value displayed in the main panel."))
+          ),
+          conditionalPanel("input.conditionedPanels==1 | input.conditionedPanels==2",
+          wellPanel(
+            h4("Heat Map colors"),
+            selectInput("low", "low",
+                        c("green", "blue")),
+            selectInput("mid", "mid",
+                        c("black", "white")),
+            selectInput("high", "high",
+                        c("red", "hotpink"))
+            )
+          ),
+          conditionalPanel("input.conditionedPanels == 2 | input.conditionedPanels == 3 |input.conditionedPanels == 4", 
            wellPanel(
              textInput("fname", "Type the file name you would like to save as", value = "HeatMap"),
              downloadButton('downloadPlot', 'Download HeatMap'),
              downloadButton('downloadPlotC', 'Download Col Dendrogram'),
              downloadButton('downloadPlotR', 'Download Row Dendrogram'),
-             downloadButton('downloadCuttree', 'Download Column clusters after cut-tree')
-           ),
-           wellPanel(  
-             h4("Heat Map colors"),
-             selectInput("low", "low",
-                         c("green", "blue")),
-             selectInput("mid", "mid",
-                         c("black", "white")),
-             selectInput("high", "high",
-                         c("red", "hotpink"))
+             downloadButton('downloadCuttree', 'Download Column clusters after cut-tree'),
+             br(),
+             sliderInput("inSlider3", "Download dimensions",
+                         min = 600, max = 2400, value = c(600, 600)) )
            )
+          
     ),
     mainPanel(
       tabsetPanel(type = "tabs", 
-                  tabPanel("ReadMe", htmlOutput("ReadMe"), tableOutput("Eg"), htmlOutput("Caption1"), tableOutput("Eg2"), htmlOutput("Caption2"), htmlOutput("blurp")),
-                  tabPanel("HeatMap", plotOutput("plot", width = 1200, height = 1200 )), 
-                  tabPanel("Column Dendrogram", plotOutput("plot1", height = 800), htmlOutput("df"), htmlOutput("pv"), htmlOutput("pvalue")), 
-                  tabPanel("Row Dendrogram", div(plotOutput("plot2", height= "65%", width = "100%"),style = "height: 2400px;"))
+                  tabPanel("ReadMe", htmlOutput("ReadMe"), tableOutput("Eg"), htmlOutput("Caption1"), tableOutput("Eg2"), htmlOutput("Caption2"), htmlOutput("blurp"), value = 1),
+                  tabPanel("HeatMap", plotOutput("plot", width = 1200, height = 1200 ), value=2), 
+                  tabPanel("Column Dendrogram", plotOutput("plot1", height = 800), htmlOutput("df"), htmlOutput("pv"), htmlOutput("pvalue"), value=3), 
+                  tabPanel("Row Dendrogram", div(plotOutput("plot2", height= "65%", width = "100%"),style = "height: 2400px;"), value =4),
+                  id = "conditionedPanels"
       )
     )
   ))
