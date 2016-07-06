@@ -113,6 +113,7 @@ bootstrapfun <- function(obsdata, samplingdata, distmethod, clustmethod, scale, 
         memb
         
         contab[[i]] <- contingencyfun(memb)
+        print(i)
       }
       
       # summarize each iteration row wise in a data frame
