@@ -8,6 +8,8 @@ require(graphics)
 require(ggplot2)
 require(gdata)
 require(plyr)
+require(dendextend)
+
 
 library(shiny)
 library(shinyFiles)
@@ -42,10 +44,10 @@ ui <- fluidPage(
                          c("euclidean", "maximum", "manhattan", "canberra", "binary", "minkowski", "pearson correlation")),
              selectInput("hclust", "Agglomerative Linkage Method", 
                          c("complete", "ward.D", "ward.D2", "single", "average","mcquitty", "median", "centroid")),
-             radioButtons("clust_byrow", "Row dendrogram",
-                          c("TRUE", "FALSE")),
-             radioButtons("clust_bycol", "Col dendrogram",
-                          c("TRUE", "FALSE")),
+             conditionalPanel("input.conditionedPanels==1 | input.conditionedPanels==2", radioButtons("clust_byrow", "Row dendrogram", c("TRUE", "FALSE")) ),
+             conditionalPanel("input.conditionedPanels==4", sliderInput("sizeRlable", "Adjust Row Label font size", min = 0.01, max = 3, value = 0.5) ),
+             conditionalPanel("input.conditionedPanels==1 | input.conditionedPanels==2", radioButtons("clust_bycol", "Col dendrogram", c("TRUE", "FALSE")) ),
+             conditionalPanel("input.conditionedPanels==3", sliderInput("sizeClable", "Adjust Column Label font size", min = 0.01, max = 3, value = 0.5) ),
              conditionalPanel("input.conditionedPanels==2", 
              radioButtons("dispRow", "Display Row labels?:", 
                           c("No", "Yes")),
@@ -54,8 +56,7 @@ ui <- fluidPage(
                           c("No", "Yes")),
              sliderInput("size2", "If yes, Col Label font size", min = 0.01, max = 3, value = 0.5) ),
              conditionalPanel("input.conditionedPanels==3", radioButtons("cutcolden", "Cut Col dendrogram?:", 
-                          c("No" = FALSE, "Yes" = TRUE)) 
-                          ),
+                          c("No" = FALSE, "Yes" = TRUE)) ),
              conditionalPanel("input.conditionedPanels==3 & input.cutcolden == 'TRUE'", numericInput("cuttree", "Cut Col Dendrogram at:", 2)),
              conditionalPanel("input.conditionedPanels==3 & input.cutcolden == 'TRUE'",
                               radioButtons("pvalue_cal", "Assess Gene set significance in separation of specimens into 2 clusters?:", c("No" = FALSE, "Yes" = TRUE))),
@@ -72,8 +73,28 @@ ui <- fluidPage(
              conditionalPanel("input.conditionedPanels==3 & input.pvalue_cal == 'TRUE'", actionButton("goButton", "Go!")),
              #conditionalPanel(condition="$('html').hasClass('shiny-busy')",
             #                  tags$div("Loading...",id="loadmessage")),
-             conditionalPanel("input.conditionedPanels==3 & input.pvalue_cal == 'TRUE'", p("Click the button to update the value displayed in the main panel."))
-          ),
+             conditionalPanel("input.conditionedPanels==3 & input.pvalue_cal == 'TRUE'", p("Click the button to update the value displayed in the main panel.")),
+          
+            
+            conditionalPanel("input.conditionedPanels==4", radioButtons("cutrowden", "Cut Row dendrogram?:", c("No" = FALSE, "Yes" = TRUE)) ),
+            conditionalPanel("input.conditionedPanels==4 & input.cutrowden == 'TRUE'", numericInput("cuttree2", "Cut Row Dendrogram at:", 2)),
+            conditionalPanel("input.conditionedPanels==4 & input.cutrowden == 'TRUE'",
+                             radioButtons("pvalue_cal2", "Assess significance of samples in separation of gene set into 2 clusters?:", c("No" = FALSE, "Yes" = TRUE))),
+            conditionalPanel("input.conditionedPanels==4 & input.cutrowden == 'TRUE' & input.pvalue_cal2 == 'TRUE'" , 
+                             selectInput("file3", label= "Select a dataset or upload your own with 'Load my own data.'", 
+                                         choices = c("Meth Sampling Data" ="Meth.Example", "Load my own sampling data" = "load_my_own_s_data"))),
+            conditionalPanel("input.conditionedPanels==4 & input.file3 == 'load_my_own_s_data'",
+                             fileInput('file4', 'Choose file to upload to sample from to estimate significance of separation', accept=c('.xlsx','text/csv', 'text/comma-separated-values,text/plain', '.csv'))) ,
+            conditionalPanel("input.conditionedPanels==4 & input.pvalue_cal2 == 'TRUE'", 
+                             numericInput("n", "Sample size for bootstrap:", 1000)),
+            conditionalPanel("input.conditionedPanels==4 & input.pvalue_cal2 == 'TRUE'", 
+                             numericInput("n_iter2", "No. of iterations for bootstrap:", 1000)),
+            conditionalPanel("input.conditionedPanels==4 & input.pvalue_cal2 == 'TRUE'", actionButton("goButton", "Go!")),
+            #conditionalPanel(condition="$('html').hasClass('shiny-busy')",
+            #                  tags$div("Loading...",id="loadmessage")),
+            conditionalPanel("input.conditionedPanels==4 & input.pvalue_cal2 == 'TRUE'", p("Click the button to update the value displayed in the main panel."))
+            
+            ),
           conditionalPanel("input.conditionedPanels==1 | input.conditionedPanels==2",
           wellPanel(
             h4("Heat Map colors"),
@@ -92,6 +113,7 @@ ui <- fluidPage(
              downloadButton('downloadPlotC', 'Download Col Dendrogram'),
              downloadButton('downloadPlotR', 'Download Row Dendrogram'),
              downloadButton('downloadCuttree', 'Download Column clusters after cut-tree'),
+             downloadButton('downloadCuttree2', 'Download Row clusters after cut-tree'),
              br(),
              sliderInput("inSlider3", "Download dimensions",
                          min = 600, max = 2400, value = c(600, 600)) )
@@ -103,7 +125,7 @@ ui <- fluidPage(
                   tabPanel("ReadMe", htmlOutput("ReadMe"), tableOutput("Eg"), htmlOutput("Caption1"), tableOutput("Eg2"), htmlOutput("Caption2"), htmlOutput("blurp"), value = 1),
                   tabPanel("HeatMap", plotOutput("plot", width = 1200, height = 1200 ), value=2), 
                   tabPanel("Column Dendrogram", plotOutput("plot1", height = 800), htmlOutput("df"), htmlOutput("pv"), htmlOutput("pvalue"), value=3), 
-                  tabPanel("Row Dendrogram", div(plotOutput("plot2", height= "65%", width = "100%"),style = "height: 2400px;"), value =4),
+                  tabPanel("Row Dendrogram", plotOutput("plot2", height = 1000), htmlOutput("df2"), htmlOutput("pv2"), htmlOutput("pvalue2"), value =4),
                   id = "conditionedPanels"
       )
     )
@@ -425,15 +447,15 @@ server <- function(input, output, session){
       } else if(number.col.groups==5) {  
         legend("topright", legend = paste(c(col.groups.name[1], col.groups.name[2], col.groups.name[3], col.groups.name[4], col.groups.name[5])), col = c("pink", "purple","blue", "orange", "yellow"), lty= 1, lwd = 10, pt.cex = 1, cex = 0.9)
       } else if(number.col.groups==6) {  
-        legend("topright", legend = paste(c(col.groups.name[1], col.groups.name[2], col.groups.name[3], col.groups.name[4], col.groups.name[5])), col = c("pink", "purple","blue", "orange", "yellow", "darkgreen"), lty= 1, lwd = 10, pt.cex = 1, cex = 0.9)
+        legend("topright", legend = paste(c(col.groups.name[1], col.groups.name[2], col.groups.name[3], col.groups.name[4], col.groups.name[5], col.groups.name[6])), col = c("pink", "purple","blue", "orange", "yellow", "darkgreen"), lty= 1, lwd = 10, pt.cex = 1, cex = 0.9)
       } else if(number.col.groups==7) {  
-        legend("topright", legend = paste(c(col.groups.name[1], col.groups.name[2], col.groups.name[3], col.groups.name[4], col.groups.name[5])), col = c("pink", "purple","blue", "orange", "yellow", "darkgreen", "hotpink"), lty= 1, lwd = 10, pt.cex = 1, cex = 0.9)
+        legend("topright", legend = paste(c(col.groups.name[1], col.groups.name[2], col.groups.name[3], col.groups.name[4], col.groups.name[5], col.groups.name[6], col.groups.name[7])), col = c("pink", "purple","blue", "orange", "yellow", "darkgreen", "hotpink"), lty= 1, lwd = 10, pt.cex = 1, cex = 0.9)
       } else if(number.col.groups==8) {  
-        legend("topright", legend = paste(c(col.groups.name[1], col.groups.name[2], col.groups.name[3], col.groups.name[4], col.groups.name[5])), col = c("pink", "purple","blue", "orange", "yellow", "darkgreen", "hotpink", "brown"), lty= 1, lwd = 10, pt.cex = 1, cex = 0.9)
+        legend("topright", legend = paste(c(col.groups.name[1], col.groups.name[2], col.groups.name[3], col.groups.name[4], col.groups.name[5], col.groups.name[6], col.groups.name[7], col.groups.name[8])), col = c("pink", "purple","blue", "orange", "yellow", "darkgreen", "hotpink", "brown"), lty= 1, lwd = 10, pt.cex = 1, cex = 0.9)
       } else if(number.col.groups==9) {  
-        legend("topright", legend = paste(c(col.groups.name[1], col.groups.name[2], col.groups.name[3], col.groups.name[4], col.groups.name[5])), col = c("pink", "purple","blue", "orange", "yellow", "darkgreen", "hotpink", "brown", "darkorchid2"), lty= 1, lwd = 10, pt.cex = 1, cex = 0.9)
+        legend("topright", legend = paste(c(col.groups.name[1], col.groups.name[2], col.groups.name[3], col.groups.name[4], col.groups.name[5], col.groups.name[6], col.groups.name[7], col.groups.name[8], col.groups.name[9])), col = c("pink", "purple","blue", "orange", "yellow", "darkgreen", "hotpink", "brown", "darkorchid2"), lty= 1, lwd = 10, pt.cex = 1, cex = 0.9)
       } else if(number.col.groups==10) {  
-        legend("topright", legend = paste(c(col.groups.name[1], col.groups.name[2], col.groups.name[3], col.groups.name[4], col.groups.name[5])), col = c("pink", "purple","blue", "orange", "yellow", "darkgreen", "hotpink", "brown", "darkorchid2", "maroon"), lty= 1, lwd = 10, pt.cex = 1, cex = 0.9)
+        legend("topright", legend = paste(c(col.groups.name[1], col.groups.name[2], col.groups.name[3], col.groups.name[4], col.groups.name[5], col.groups.name[6], col.groups.name[7], col.groups.name[8], col.groups.name[9], col.groups.name[10])), col = c("pink", "purple","blue", "orange", "yellow", "darkgreen", "hotpink", "brown", "darkorchid2", "maroon"), lty= 1, lwd = 10, pt.cex = 1, cex = 0.9)
       }
     }
     else {
@@ -458,15 +480,15 @@ server <- function(input, output, session){
       } else if(number.col.groups==5) {  
         legend("topright", legend = paste(c(col.groups.name[1], col.groups.name[2], col.groups.name[3], col.groups.name[4], col.groups.name[5])), col = c("pink", "purple","blue", "orange", "yellow"), lty= 1, lwd = 10, pt.cex = 1, cex = 0.9)
       } else if(number.col.groups==6) {  
-        legend("topright", legend = paste(c(col.groups.name[1], col.groups.name[2], col.groups.name[3], col.groups.name[4], col.groups.name[5])), col = c("pink", "purple","blue", "orange", "yellow", "darkgreen"), lty= 1, lwd = 10, pt.cex = 1, cex = 0.9)
+        legend("topright", legend = paste(c(col.groups.name[1], col.groups.name[2], col.groups.name[3], col.groups.name[4], col.groups.name[5], col.groups.name[6])), col = c("pink", "purple","blue", "orange", "yellow", "darkgreen"), lty= 1, lwd = 10, pt.cex = 1, cex = 0.9)
       } else if(number.col.groups==7) {  
-        legend("topright", legend = paste(c(col.groups.name[1], col.groups.name[2], col.groups.name[3], col.groups.name[4], col.groups.name[5])), col = c("pink", "purple","blue", "orange", "yellow", "darkgreen", "hotpink"), lty= 1, lwd = 10, pt.cex = 1, cex = 0.9)
+        legend("topright", legend = paste(c(col.groups.name[1], col.groups.name[2], col.groups.name[3], col.groups.name[4], col.groups.name[5], col.groups.name[6], col.groups.name[7])), col = c("pink", "purple","blue", "orange", "yellow", "darkgreen", "hotpink"), lty= 1, lwd = 10, pt.cex = 1, cex = 0.9)
       } else if(number.col.groups==8) {  
-        legend("topright", legend = paste(c(col.groups.name[1], col.groups.name[2], col.groups.name[3], col.groups.name[4], col.groups.name[5])), col = c("pink", "purple","blue", "orange", "yellow", "darkgreen", "hotpink", "brown"), lty= 1, lwd = 10, pt.cex = 1, cex = 0.9)
+        legend("topright", legend = paste(c(col.groups.name[1], col.groups.name[2], col.groups.name[3], col.groups.name[4], col.groups.name[5], col.groups.name[6], col.groups.name[7], col.groups.name[8])), col = c("pink", "purple","blue", "orange", "yellow", "darkgreen", "hotpink", "brown"), lty= 1, lwd = 10, pt.cex = 1, cex = 0.9)
       } else if(number.col.groups==9) {  
-        legend("topright", legend = paste(c(col.groups.name[1], col.groups.name[2], col.groups.name[3], col.groups.name[4], col.groups.name[5])), col = c("pink", "purple","blue", "orange", "yellow", "darkgreen", "hotpink", "brown", "darkorchid2"), lty= 1, lwd = 10, pt.cex = 1, cex = 0.9)
+        legend("topright", legend = paste(c(col.groups.name[1], col.groups.name[2], col.groups.name[3], col.groups.name[4], col.groups.name[5], col.groups.name[6], col.groups.name[7], col.groups.name[8], col.groups.name[9])), col = c("pink", "purple","blue", "orange", "yellow", "darkgreen", "hotpink", "brown", "darkorchid2"), lty= 1, lwd = 10, pt.cex = 1, cex = 0.9)
       } else if(number.col.groups==10) {  
-        legend("topright", legend = paste(c(col.groups.name[1], col.groups.name[2], col.groups.name[3], col.groups.name[4], col.groups.name[5])), col = c("pink", "purple","blue", "orange", "yellow", "darkgreen", "hotpink", "brown", "darkorchid2", "maroon"), lty= 1, lwd = 10, pt.cex = 1, cex = 0.9)
+        legend("topright", legend = paste(c(col.groups.name[1], col.groups.name[2], col.groups.name[3], col.groups.name[4], col.groups.name[5], col.groups.name[6], col.groups.name[7], col.groups.name[8], col.groups.name[9], col.groups.name[10])), col = c("pink", "purple","blue", "orange", "yellow", "darkgreen", "hotpink", "brown", "darkorchid2", "maroon"), lty= 1, lwd = 10, pt.cex = 1, cex = 0.9)
       }
     }
     
@@ -486,36 +508,97 @@ server <- function(input, output, session){
         } else if(number.col.groups==5) {  
           legend("topright", legend = paste(c(col.groups.name[1], col.groups.name[2], col.groups.name[3], col.groups.name[4], col.groups.name[5])), col = c("pink", "purple","blue", "orange", "yellow"), lty= 1, lwd = 10, pt.cex = 1, cex = 0.9)
         } else if(number.col.groups==6) {  
-          legend("topright", legend = paste(c(col.groups.name[1], col.groups.name[2], col.groups.name[3], col.groups.name[4], col.groups.name[5])), col = c("pink", "purple","blue", "orange", "yellow", "darkgreen"), lty= 1, lwd = 10, pt.cex = 1, cex = 0.9)
+          legend("topright", legend = paste(c(col.groups.name[1], col.groups.name[2], col.groups.name[3], col.groups.name[4], col.groups.name[5], col.groups.name[6])), col = c("pink", "purple","blue", "orange", "yellow", "darkgreen"), lty= 1, lwd = 10, pt.cex = 1, cex = 0.9)
         } else if(number.col.groups==7) {  
-          legend("topright", legend = paste(c(col.groups.name[1], col.groups.name[2], col.groups.name[3], col.groups.name[4], col.groups.name[5])), col = c("pink", "purple","blue", "orange", "yellow", "darkgreen", "hotpink"), lty= 1, lwd = 10, pt.cex = 1, cex = 0.9)
+          legend("topright", legend = paste(c(col.groups.name[1], col.groups.name[2], col.groups.name[3], col.groups.name[4], col.groups.name[5], col.groups.name[6],  col.groups.name[7])), col = c("pink", "purple","blue", "orange", "yellow", "darkgreen", "hotpink"), lty= 1, lwd = 10, pt.cex = 1, cex = 0.9)
         } else if(number.col.groups==8) {  
-          legend("topright", legend = paste(c(col.groups.name[1], col.groups.name[2], col.groups.name[3], col.groups.name[4], col.groups.name[5])), col = c("pink", "purple","blue", "orange", "yellow", "darkgreen", "hotpink", "brown"), lty= 1, lwd = 10, pt.cex = 1, cex = 0.9)
+          legend("topright", legend = paste(c(col.groups.name[1], col.groups.name[2], col.groups.name[3], col.groups.name[4], col.groups.name[5], col.groups.name[6],  col.groups.name[7], col.groups.name[8] )), col = c("pink", "purple","blue", "orange", "yellow", "darkgreen", "hotpink", "brown"), lty= 1, lwd = 10, pt.cex = 1, cex = 0.9)
         } else if(number.col.groups==9) {  
-          legend("topright", legend = paste(c(col.groups.name[1], col.groups.name[2], col.groups.name[3], col.groups.name[4], col.groups.name[5])), col = c("pink", "purple","blue", "orange", "yellow", "darkgreen", "hotpink", "brown", "darkorchid2"), lty= 1, lwd = 10, pt.cex = 1, cex = 0.9)
+          legend("topright", legend = paste(c(col.groups.name[1], col.groups.name[2], col.groups.name[3], col.groups.name[4], col.groups.name[5], col.groups.name[6],  col.groups.name[7], col.groups.name[8], col.groups.name[9] )), col = c("pink", "purple","blue", "orange", "yellow", "darkgreen", "hotpink", "brown", "darkorchid2"), lty= 1, lwd = 10, pt.cex = 1, cex = 0.9)
         } else if(number.col.groups==10) {  
-          legend("topright", legend = paste(c(col.groups.name[1], col.groups.name[2], col.groups.name[3], col.groups.name[4], col.groups.name[5])), col = c("pink", "purple","blue", "orange", "yellow", "darkgreen", "hotpink", "brown", "darkorchid2", "maroon"), lty= 1, lwd = 10, pt.cex = 1, cex = 0.9)
+          legend("topright", legend = paste(c(col.groups.name[1], col.groups.name[2], col.groups.name[3], col.groups.name[4], col.groups.name[5], col.groups.name[6],  col.groups.name[7], col.groups.name[8], col.groups.name[9], col.groups.name[10])), col = c("pink", "purple","blue", "orange", "yellow", "darkgreen", "hotpink", "brown", "darkorchid2", "maroon"), lty= 1, lwd = 10, pt.cex = 1, cex = 0.9)
         }
         dev.off() },
       contentType = 'image/png')
     
-    
+    coldendo <- reactive({
+      par(cex = input$sizeClable)
+      dend1 <- as.dendrogram(hm$colDendrogram)
+      d <- data.frame(v1 =hm$colInd, v2=1:length(hm$colInd))
+      m <- data.frame(v3 = 1:length(cc1), v4 = cc1)
+      
+      colbar <- data.frame(v1=d$v2, v4=m[match(d$v1, m$v3), 2])
+      colbar <- colbar[,2]
+      labels_colors(dend1) <- as.character(colbar)
+      #dend1=color_branches(dend1,k=input$cuttree, col = c("pink", "purple"))
+      plot(dend1)
+      if(number.col.groups==1) {
+        legend("topright", legend = paste(col.groups.name), col = "pink", lty= 1, lwd = 10, pt.cex = 1, cex = 2*input$sizeClable)
+      } else if(number.col.groups==2) {
+        legend("topright", legend = paste(c(col.groups.name[1], col.groups.name[2])), col = c("pink", "purple"), lty= 1, lwd = 10, pt.cex = 1, cex = 2*input$sizeClable)
+      } else if(number.col.groups==3) {  
+        legend("topright", legend = paste(c(col.groups.name[1], col.groups.name[2], col.groups.name[3])), col = c("pink", "purple", "blue"), lty= 1, lwd = 10, pt.cex = 1, cex = 2*input$sizeClable)
+      } else if(number.col.groups==4) {  
+        legend("topright", legend = paste(c(col.groups.name[1], col.groups.name[2], col.groups.name[3], col.groups.name[4])), col = c("pink", "purple","blue", "orange"), lty= 1, lwd = 10, pt.cex = 1, cex = 2*input$sizeClable)
+      } else if(number.col.groups==5) {  
+        legend("topright", legend = paste(c(col.groups.name[1], col.groups.name[2], col.groups.name[3], col.groups.name[4], col.groups.name[5])), col = c("pink", "purple","blue", "orange", "yellow"), lty= 1, lwd = 10, pt.cex = 1, cex = 2*input$sizeClable)
+      } else if(number.col.groups==6) {  
+        legend("topright", legend = paste(c(col.groups.name[1], col.groups.name[2], col.groups.name[3], col.groups.name[4], col.groups.name[5], col.groups.name[6])), col = c("pink", "purple","blue", "orange", "yellow", "darkgreen"), lty= 1, lwd = 10, pt.cex = 1, cex = 2*input$sizeClable)
+      } else if(number.col.groups==7) {  
+        legend("topright", legend = paste(c(col.groups.name[1], col.groups.name[2], col.groups.name[3], col.groups.name[4], col.groups.name[5], col.groups.name[6], col.groups.name[7])), col = c("pink", "purple","blue", "orange", "yellow", "darkgreen", "hotpink"), lty= 1, lwd = 10, pt.cex = 1, cex = 2*input$sizeClable)
+      } else if(number.col.groups==8) {  
+        legend("topright", legend = paste(c(col.groups.name[1], col.groups.name[2], col.groups.name[3], col.groups.name[4], col.groups.name[5], col.groups.name[6], col.groups.name[7], col.groups.name[8])), col = c("pink", "purple","blue", "orange", "yellow", "darkgreen", "hotpink", "brown"), lty= 1, lwd = 10, pt.cex = 1, cex = 2*input$sizeClable)
+      } else if(number.col.groups==9) {  
+        legend("topright", legend = paste(c(col.groups.name[1], col.groups.name[2], col.groups.name[3], col.groups.name[4], col.groups.name[5], col.groups.name[6], col.groups.name[7], col.groups.name[8], col.groups.name[9])), col = c("pink", "purple","blue", "orange", "yellow", "darkgreen", "hotpink", "brown", "darkorchid2"), lty= 1, lwd = 10, pt.cex = 1, cex = 2*input$sizeClable9)
+      } else if(number.col.groups==10) {  
+        legend("topright", legend = paste(c(col.groups.name[1], col.groups.name[2], col.groups.name[3], col.groups.name[4], col.groups.name[5], col.groups.name[6], col.groups.name[7], col.groups.name[8], col.groups.name[9], col.groups.name[10])), col = c("pink", "purple","blue", "orange", "yellow", "darkgreen", "hotpink", "brown", "darkorchid2", "maroon"), lty= 1, lwd = 10, pt.cex = 1, cex = 2*input$sizeClable)
+      }
+    })
     
     output$plot1 <- renderPlot({
-      plot(hm$colDendrogram)
+       coldendo()
       
       output$downloadPlotC <- downloadHandler(
         filename = function() { paste(paste(input$fname, input$hclust, "clustering", input$dist, "distance", sep="_"), '_Col_Dendrogram.png', sep='') },
         content = function(file) {
-          png(file, width = input$inSlider3[1], height = input$inSlider3[2], units = "px", pointsize = 12, bg = "white", res = NA)
-          plot(hm$colDendrogram)
+          png(file, width = input$inSlider3[1], height = input$inSlider3[2], units = "px", pointsize = 6*input$sizeClable, bg = "white", res = NA)
+          dend1 <- as.dendrogram(hm$colDendrogram)
+          d <- data.frame(v1 =hm$colInd, v2=1:length(hm$colInd))
+          m <- data.frame(v3 = 1:length(cc1), v4 = cc1)
+          
+          colbar <- data.frame(v1=d$v2, v4=m[match(d$v1, m$v3), 2])
+          colbar <- colbar[,2]
+          labels_colors(dend1) <- as.character(colbar)
+          plot(dend1)
+          if(number.col.groups==1) {
+            legend("topright", legend = paste(col.groups.name), col = "pink", lty= 1, lwd = 10, pt.cex = 1, cex = 0.9)
+          } else if(number.col.groups==2) {
+            legend("topright", legend = paste(c(col.groups.name[1], col.groups.name[2])), col = c("pink", "purple"), lty= 1, lwd = 10, pt.cex = 1, cex = 2*input$sizeClable)
+          } else if(number.col.groups==3) {  
+            legend("topright", legend = paste(c(col.groups.name[1], col.groups.name[2], col.groups.name[3])), col = c("pink", "purple", "blue"), lty= 1, lwd = 10, pt.cex = 1, cex = 2*input$sizeClable)
+          } else if(number.col.groups==4) {  
+            legend("topright", legend = paste(c(col.groups.name[1], col.groups.name[2], col.groups.name[3], col.groups.name[4])), col = c("pink", "purple","blue", "orange"), lty= 1, lwd = 10, pt.cex = 1, cex = 2*input$sizeClable)
+          } else if(number.col.groups==5) {  
+            legend("topright", legend = paste(c(col.groups.name[1], col.groups.name[2], col.groups.name[3], col.groups.name[4], col.groups.name[5])), col = c("pink", "purple","blue", "orange", "yellow"), lty= 1, lwd = 10, pt.cex = 1, cex = 2*input$sizeClable)
+          } else if(number.col.groups==6) {  
+            legend("topright", legend = paste(c(col.groups.name[1], col.groups.name[2], col.groups.name[3], col.groups.name[4], col.groups.name[5], col.groups.name[6])), col = c("pink", "purple","blue", "orange", "yellow", "darkgreen"), lty= 1, lwd = 10, pt.cex = 1, cex = 2*input$sizeClable)
+          } else if(number.col.groups==7) {  
+            legend("topright", legend = paste(c(col.groups.name[1], col.groups.name[2], col.groups.name[3], col.groups.name[4], col.groups.name[5], col.groups.name[6], col.groups.name[7])), col = c("pink", "purple","blue", "orange", "yellow", "darkgreen", "hotpink"), lty= 1, lwd = 10, pt.cex = 1, cex = 2*input$sizeClable)
+          } else if(number.col.groups==8) {  
+            legend("topright", legend = paste(c(col.groups.name[1], col.groups.name[2], col.groups.name[3], col.groups.name[4], col.groups.name[5], col.groups.name[6], col.groups.name[7], col.groups.name[8])), col = c("pink", "purple","blue", "orange", "yellow", "darkgreen", "hotpink", "brown"), lty= 1, lwd = 10, pt.cex = 1, cex = 2*input$sizeClable)
+          } else if(number.col.groups==9) {  
+            legend("topright", legend = paste(c(col.groups.name[1], col.groups.name[2], col.groups.name[3], col.groups.name[4], col.groups.name[5], col.groups.name[6], col.groups.name[7], col.groups.name[8], col.groups.name[9])), col = c("pink", "purple","blue", "orange", "yellow", "darkgreen", "hotpink", "brown", "darkorchid2"), lty= 1, lwd = 10, pt.cex = 1, cex = 2*input$sizeClable)
+          } else if(number.col.groups==10) {  
+            legend("topright", legend = paste(c(col.groups.name[1], col.groups.name[2], col.groups.name[3], col.groups.name[4], col.groups.name[5], col.groups.name[6], col.groups.name[7], col.groups.name[8], col.groups.name[9], col.groups.name[10])), col = c("pink", "purple","blue", "orange", "yellow", "darkgreen", "hotpink", "brown", "darkorchid2", "maroon"), lty= 1, lwd = 10, pt.cex = 1, cex = 2*input$sizeClable)
+          }
+        
           dev.off()},
         contentType = 'image/png') 
     })
     
     
     cut_table <- reactive ({
-      as.data.frame(cutree(as.hclust(hm$colDendrogram), k=input$cuttree)[as.hclust(hm$colDendrogram )$order])
+      as.data.frame(cutree(as.hclust(hm$colDendrogram), k=input$cuttree)[as.hclust(hm$colDendrogram)$order])
     })
     
     
@@ -545,7 +628,8 @@ server <- function(input, output, session){
         t_data_l1_l2 <- cbind.data.frame(rownames(t_data_l1_l2), t_data_l1_l2)
         names(t_data_l1_l2)[1] <- "Sample"
         names(t_data_l1_l2)[2] <- "Group"
-        m <- merge(t_data_l1_l2, cuttable, by = "Sample")
+        m <- merge(cuttable, t_data_l1_l2, by = "Sample", sort= F)
+        m <- m[, c(1, 3, 2)]
         
         write.csv(m, con, quote=F, row.names = F)
       })
@@ -560,6 +644,7 @@ server <- function(input, output, session){
     
     output$pvalue <- renderUI ({
       input$goButton
+      
     isolate(
         if(input$cutcolden == 'TRUE') {
           hc.cols <- as.hclust(hm$colDendrogram)
@@ -574,7 +659,7 @@ server <- function(input, output, session){
           t_data_l1_l2 <- cbind.data.frame(rownames(t_data_l1_l2), t_data_l1_l2)
           names(t_data_l1_l2)[1] <- "Sample"
           names(t_data_l1_l2)[2] <- "Group"
-          m <- merge(t_data_l1_l2, cut, by = "Sample")
+          m <- merge(cut,t_data_l1_l2, by = "Sample")
           
         if(input$pvalue_cal == TRUE) 
         {
@@ -602,17 +687,155 @@ server <- function(input, output, session){
       )
     })
     
+    rowdendo <- reactive({
+      par(cex = input$sizeRlable)
+      dend2 <- as.dendrogram(hm$rowDendrogram)
+      dd <- data.frame(v1 =hm$rowInd, v2=1:length(hm$rowInd))
+      mm <- data.frame(v3 = 1:length(cc2), v4 = cc2)
+      
+      colbar2 <- data.frame(v1=dd$v2, v4=mm[match(dd$v1, mm$v3), 2])
+      colbar2 <- colbar2[,2]
+      labels_colors(dend2) <- as.character(colbar2)
+      plot(dend2, horiz = T)
+      if(number.row.groups==1) {
+        legend("topright", legend = paste(row.groups.name), col = "yellow", lty= 1, lwd = 10, pt.cex = 1, cex = 2*input$sizeRlable)
+      } else if(number.row.groups==2) {
+        legend("topright", legend = paste(c(row.groups.name[1], row.groups.name[2])), col = c("yellow", "orange"), lty= 1, lwd = 10, pt.cex = 1, cex = 2*input$sizeRlable)
+      } else if(number.row.groups==3) {  
+        legend("topright", legend = paste(c(row.groups.name[1], row.groups.name[2], row.groups.name[3])), col = c("yellow", "orange", "hotpink"), lty= 1, lwd = 10, pt.cex = 1, cex = 2*input$sizeRlable)
+      } else if(number.row.groups==4) {  
+        legend("topright", legend = paste(c(row.groups.name[1], row.groups.name[2], row.groups.name[3], row.groups.name[4])), col = c("yellow", "orange", "hotpink", "gray"), lty= 1, lwd = 10, pt.cex = 1, cex = 2*input$sizeRlable)
+      } else if(number.row.groups==5) {  
+        legend("topright", legend = paste(c(row.groups.name[1], row.groups.name[2], row.groups.name[3], row.groups.name[4], row.groups.name[5])), col = c("yellow", "orange", "hotpink", "gray", "cyan"), lty= 1, lwd = 10, pt.cex = 1, cex = 2*input$sizeRlable)
+      } else if(number.row.groups==6) {  
+        legend("topright", legend = paste(c(row.groups.name[1], row.groups.name[2], row.groups.name[3], row.groups.name[4], row.groups.name[5], row.groups.name[6])), col = c("yellow", "orange", "hotpink", "gray", "cyan", "maroon"), lty= 1, lwd = 10, pt.cex = 1, cex = 2*input$sizeRlable)
+      } 
+    })
+    
     output$plot2 <- renderPlot({
-      plot(hm$rowDendrogram, horiz = T) 
+      par(cex= input$sizeRlable)
+      #plot(hm$rowDendrogram, horiz = T) 
+      rowdendo()
       
       output$downloadPlotR <- downloadHandler(
         filename = function() { paste(paste(input$fname, input$hclust, "clustering", input$dist, "distance", sep="_"), '_Row_Dendrogram.png', sep='') },
         content = function(file) {
-          png(file, width = input$inSlider3[1], height = input$inSlider3[2], units = "px", pointsize = 12, bg = "white", res = NA)
-          plot(hm$rowDendrogram, horiz = T)
+          png(file, width = input$inSlider3[1], height = input$inSlider3[2], units = "px", pointsize = 6*input$sizeRlable, bg = "white", res = NA)
+          #plot(hm$rowDendrogram, horiz = T)
+          dend2 <- as.dendrogram(hm$rowDendrogram)
+          dd <- data.frame(v1 =hm$rowInd, v2=1:length(hm$rowInd))
+          mm <- data.frame(v3 = 1:length(cc2), v4 = cc2)
+          
+          colbar2 <- data.frame(v1=dd$v2, v4=mm[match(dd$v1, mm$v3), 2])
+          colbar2 <- colbar2[,2]
+          labels_colors(dend2) <- as.character(colbar2)
+          plot(dend2, horiz = T)
+          if(number.row.groups==1) {
+            legend("topright", legend = paste(row.groups.name), col = "yellow", lty= 1, lwd = 10, pt.cex = 1, cex = 2*input$sizeRlable)
+          } else if(number.row.groups==2) {
+            legend("topright", legend = paste(c(row.groups.name[1], row.groups.name[2])), col = c("yellow", "orange"), lty= 1, lwd = 10, pt.cex = 1, cex = 2*input$sizeRlable)
+          } else if(number.row.groups==3) {  
+            legend("topright", legend = paste(c(row.groups.name[1], row.groups.name[2], row.groups.name[3])), col = c("yellow", "orange", "hotpink"), lty= 1, lwd = 10, pt.cex = 1, cex = 2*input$sizeRlable)
+          } else if(number.row.groups==4) {  
+            legend("topright", legend = paste(c(row.groups.name[1], row.groups.name[2], row.groups.name[3], row.groups.name[4])), col = c("yellow", "orange", "hotpink", "gray"), lty= 1, lwd = 10, pt.cex = 1, cex = 2*input$sizeRlable)
+          } else if(number.row.groups==5) {  
+            legend("topright", legend = paste(c(row.groups.name[1], row.groups.name[2], row.groups.name[3], row.groups.name[4], row.groups.name[5])), col = c("yellow", "orange", "hotpink", "gray", "cyan"), lty= 1, lwd = 10, pt.cex = 1, cex = 2*input$sizeRlable)
+          } else if(number.row.groups==6) {  
+            legend("topright", legend = paste(c(row.groups.name[1], row.groups.name[2], row.groups.name[3], row.groups.name[4], row.groups.name[5], row.groups.name[6])), col = c("yellow", "orange", "hotpink", "gray", "cyan", "maroon"), lty= 1, lwd = 10, pt.cex = 1, cex = 2*input$sizeRlable)
+          } 
           dev.off() },
         contentType = 'image/png')
      })
+    
+    cut_table2 <- reactive ({
+      as.data.frame(cutree(as.hclust(hm$rowDendrogram), k=input$cuttree2)[as.hclust(hm$rowDendrogram)$order])
+    })
+    
+    
+    output$df2 <- renderUI({
+      if(input$cutrowden == 'TRUE') {
+        hc.rows <- as.hclust(hm$rowDendrogram)
+        cut2 <- cutree(hc.rows, k=input$cuttree2)[hc.rows$order]
+        s2 <- names(cut2)
+        HTML(paste('</t>', paste(s2, cut2,sep = " "), sep="<br/>")) }
+      else { 
+        return(br(strong(em("Please select Cut Row dendrogram?: = 'Yes' to display rows clusters. Also select value at which you would like to cut the row dendogram (default is at k= 2)"))))
+      }
+    })
+    
+    output$downloadCuttree2 <- downloadHandler(
+      filename = function() {
+        paste(paste(input$fname, input$hclust, "clustering", input$dist, "distance", sep="_"), '_Row_Dendrogram_cutree_', 'k=', input$cuttree2, '.csv', sep='') 
+      },
+      content = function(con) {
+        cuttable2 <- cut_table2()
+        cuttable2 <- cbind.data.frame(rownames(cuttable2), cuttable2)
+        names(cuttable2)[1] <- "gene_id"
+        names(cuttable2)[2] <- "Cluster"
+        data_l1_l2_2 <- data_input()
+        data_l1_l2_2 <- data_l1_l2_2[-1, c(1,2)]
+        #t_data_l1_l2 <- t(data_l1_l2)
+        #t_data_l1_l2 <- cbind.data.frame(rownames(t_data_l1_l2), t_data_l1_l2)
+        #names(t_data_l1_l2)[1] <- "Gene_id"
+        #names(t_data_l1_l2)[2] <- "Group"
+        m2 <- merge(cuttable2, data_l1_l2_2, by = "gene_id", sort= F)
+        m2 <- m2[, c(1, 3, 2)]
+        
+        write.csv(m2, con, quote=F, row.names = F)
+      })
+    
+    output$pv2 <- renderUI({
+      if(input$cutrowden == 'TRUE' & number.row.groups == 2 ){
+        HTML(paste("<br/>", paste("Would you want to assess significance of patients in the separation of genes into two clusters? (Yes/No)"), sep = "<br>")) 
+      }
+      else 
+        return(NULL)
+    })
+    
+    output$pvalue2 <- renderUI ({
+      input$goButton
+      isolate(
+        if(input$cutrowden == 'TRUE') {
+          hc.rows <- as.hclust(hm$rowDendrogram)
+          cut2 <- as.data.frame(cutree(hc.rows, k=input$cuttree2)[hc.rows$order])
+          #cuttable <- cut_table()
+          cut2 <- cbind.data.frame(rownames(cut2), cut2)
+          names(cut2)[1] <- "Sample"
+          names(cut2)[2] <- "Cluster"
+          data_l1_l2_2 <- data_input()
+          data_l1_l2 <- data_l1_l2[1,c(-1, -2)]
+          t_data_l1_l2 <- t(data_l1_l2)
+          t_data_l1_l2 <- cbind.data.frame(rownames(t_data_l1_l2), t_data_l1_l2)
+          names(t_data_l1_l2)[1] <- "Sample"
+          names(t_data_l1_l2)[2] <- "Group"
+          m <- merge(cut,t_data_l1_l2, by = "Sample")
+          
+          if(input$pvalue_cal == TRUE) 
+          {
+            if(input$file3 == 'Meth.Example'){
+              s_data <- readRDS("Meth450K.data.rds")
+            }
+            else {
+              inFile2 <- input$file4
+              if (is.null(inFile2))
+                return(NULL)
+              else if(grepl(".xlsx", inFile2[1])) { s_data = read.xlsx(as.character(inFile2$datapath), colNames = TRUE, rowNames = F) }
+              else if(grepl(".csv", inFile2[1])) { s_data = read.csv(as.character(inFile2$datapath), header = TRUE, sep = ",", stringsAsFactors = F) }
+              else if(grepl(".txt", inFile2[1])) { s_data = read.table(as.character(inFile2$datapath), header = TRUE, sep = "\t", stringsAsFactors = F) }
+            }
+            
+            # Bootstrap data, and pass in the updateProgress function so
+            # that it can update the progress indicator.
+            # b <- bootstrapfun(obsdata= m, samplingdata=s_data, distmethod= input$dist, clustmethod=input$hclust, scale= input$norm, n= input$n , k = input$cuttree, n.iter=input$n_iter, zlim = input$inslider)
+            
+            b <- bootstrapfun(obsdata=m, samplingdata=s_data, distmethod = input$dist, clustmethod= input$hclust, scale=input$norm, n=input$n, k=input$cuttree, n.iter=input$n_iter, zlim=c(input$inSlider[1],input$inSlider[2]))
+            
+            HTML(paste("<br/>", paste(strong("The p-value to test the gene set significance in the separation of specimens into 2 clusters is =")), em(b) , sep = " "))
+          }
+        }
+      )
+    })
+    
     }
     else
       return(NULL)
