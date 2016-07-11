@@ -42,11 +42,12 @@ zClust <- function(x, scale, zlim)
 }
 
 
-bootstrapfun <- function(obsdata, samplingdata, distmethod, clustmethod, scale, n, k, n.iter, zlim) #n is the sample size for the expected data
+bootstrapfun <- function(obsdata, samplingdata, distmethod, clustmethod, scale, n, k, n.iter, zlim, sampler, updateProgress = NULL) #n is the sample size for the expected data
 {
   #obsdata$Group <- ifelse(grepl("-01", obsdata$X), "Tumor", "Normal")
   #obsmatrix <- table(obsdata$x, obsdata$Group)
   #pobs <- pvaluefunc(obsmatrix)
+  names(obsdata)[1] <- "Sample"
   obsdata$Sample <- gsub("[[:punct:]]", "-", obsdata$Sample)
   
   # estimate no. of col groups for obs
@@ -66,9 +67,19 @@ bootstrapfun <- function(obsdata, samplingdata, distmethod, clustmethod, scale, 
     {
       for(i in 1:n.iter) #change to no. of interations required
       {
+        Sys.sleep(0.25)
         #Remove non-data columns
-        samplingdata2<- samplingdata[,c(-1, -2)]
+        if(sampler == "Row") {
+          samplingdata2 <- setNames(data.frame(t(samplingdata[,-1])), samplingdata[,1]) 
+          samplingdata2 <- cbind.data.frame(rownames(samplingdata2), samplingdata2)
+          #colnames(samplingdata2) <- samplingdata2[1,]
+          
+        }
+        else if(sampler == "Column") {
+          samplingdata2 <- samplingdata
+        }
         
+        samplingdata2<- samplingdata2[,c(-1, -2)]
         # estimate no. of col groups
         classfn <- as.character(unlist(samplingdata2[1,])) 
         classfn.count <- table(classfn)
@@ -113,6 +124,9 @@ bootstrapfun <- function(obsdata, samplingdata, distmethod, clustmethod, scale, 
         memb
         
         contab[[i]] <- contingencyfun(memb)
+        if (is.function(updateProgress)) {
+          text <- paste0("Iteration #: ", i)
+          updateProgress(detail = text) }
         print(i)
       }
       
