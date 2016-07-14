@@ -1,5 +1,5 @@
 # CASH
-Clustering Analysis with Shiny HeatMap 
+## Clustering Analysis with Shiny HeatMap 
 
 Is a shiny tool that lets you create a HeatMap with only the minimum knowledge of heatmaps and no coding experience. The user may upload their own data or use the provided example data to generate the HeatMap using any distance or clustering method of their choice. The column and row dendrograms are displayed individually in separate tabs. If you wish to know the samples within each cluster, this information can be downloaded using the cutree download button inside the row/column dendrogram tab. The novelty about this app is that it can also provide a pvalue to test significance between the clusters.
 
