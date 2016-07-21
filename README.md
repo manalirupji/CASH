@@ -7,7 +7,7 @@ Firstly, you should have the most recent version of R or RStudio.
 Next install required packages. Cut and paste what's below in an R session.
 
 ``` R
-install.packages(c("shiny", "shinyFiles", "shinyjs", "openxlsx", "openxlsx", "gplots", "reshape", "scales", "RColorBrewer", "stats", "graphics", "ggplot2", "gdata", "plyr", "dendextend", "DT", "gridExtra"))
+install.packages(c("shiny", "shinyFiles", "shinyjs", "openxlsx", "openxlsx", "gplots", "reshape", "scales", "RColorBrewer", "stats", "graphics", "ggplot2", "gdata", "plyr", "dendextend", "DT", "gridExtra", "htmlwidgets"))
 source("http://bioconductor.org/biocLite.R")
 biocLite("impute")
 ```
