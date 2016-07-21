@@ -1,3 +1,9 @@
+
+
+####################################################
+######### USER DEFINED FUNCTIONS FOR CASH ##########
+####################################################
+
 contingencyfun <- function(memb)
 {
   memb[,1] <- gsub("[[:punct:]]", "-", memb[,1])
@@ -10,16 +16,16 @@ contingencyfun <- function(memb)
 }
 
 
-pvaluefunc <- function(mytable)
+pvaluefunc <- function(mt)
 {
-  m <- t(matrix(mytable, 2, 2))
-  #colnames(m) <- c("Normal", "Tumor")
-  if(length(m[m<5]) != 0) {
-    pvalue <- fisher.test(m)$p.value
-  }else {
-    pvalue <- chisq.test(m)$p.value
-  }
-  return(pvalue)
+  m <- t(matrix(unlist(mt), 2))
+   # colnames(m) <- c("Normal", "Tumor")
+   # if(length(m[m<5]) != 0) {
+   pv <- fisher.test(as.matrix(m))$p.value
+  #  }else {
+  # pv <- chisq.test(as.matrix(m))$p.value
+  # }
+  return(pv)
 }
 
 
@@ -44,25 +50,29 @@ zClust <- function(x, scale, zlim)
 
 bootstrapfun <- function(obsdata, samplingdata, distmethod, clustmethod, scale, n, k, n.iter, zlim, sampler, updateProgress = NULL) #n is the sample size for the expected data
 {
-  #obsdata$Group <- ifelse(grepl("-01", obsdata$X), "Tumor", "Normal")
-  #obsmatrix <- table(obsdata$x, obsdata$Group)
-  #pobs <- pvaluefunc(obsmatrix)
+  classfn.count.obs <- integer()
   names(obsdata)[1] <- "Sample"
   obsdata$Sample <- gsub("[[:punct:]]", "-", obsdata$Sample)
   
   # estimate no. of col groups for obs
   classfn.obs <- as.character(unlist(obsdata$Group)) 
-  classfn.count.obs <- table(classfn.obs)
+  classfn.count.obs <- length(table(unique(classfn.obs)))
   classfn.names.obs <- names(table(classfn.obs))
   
+  if(classfn.count.obs < 2){
+    stop("Need atleast two groups to calculate p-values using contigency table analysis")
+  } else if(classfn.count.obs > 1) {
   obsdata$Sample <- ifelse(grepl(classfn.names.obs[1], obsdata$Group) , paste(obsdata$Sample, ".G1", sep=""), paste(obsdata$Sample, ".G2", sep=""))
   
   obstable <- contingencyfun(obsdata)
   pobs <- pvaluefunc(obstable)
   if(pobs <= 0.05)
   {
+    b1 <- list()
     contab <- list()
     my.matrix <- matrix()
+    perms.pvalue <- numeric()
+   
     if(n <= nrow(samplingdata))
     {
       for(i in 1:n.iter) #change to no. of interations required
@@ -73,9 +83,7 @@ bootstrapfun <- function(obsdata, samplingdata, distmethod, clustmethod, scale, 
           samplingdata2 <- setNames(data.frame(t(samplingdata[,-1])), samplingdata[,1]) 
           samplingdata2 <- cbind.data.frame(rownames(samplingdata2), samplingdata2)
           #colnames(samplingdata2) <- samplingdata2[1,]
-          
-        }
-        else if(sampler == "Column") {
+        } else if(sampler == "Column") {
           samplingdata2 <- samplingdata
         }
         
@@ -102,12 +110,15 @@ bootstrapfun <- function(obsdata, samplingdata, distmethod, clustmethod, scale, 
         mat <- zClust(bootdata3, scale, zlim )
         
         if(distmethod == "pearson correlation") {
-          #   hm <- heatmap.2(as.matrix(mat[[1]]), Rowv=T, Colv=T, scale="none", hclust=function(x) hclust(x,method=clustmethod), distfun=function(x) as.dist((1-cor(t(x)))), margin = c(7,9), density.info=c("none"),trace=c("none"))
-          d <- as.dist((1-cor(mat[[1]])))
-          hc <- hclust(d, method=clustmethod)
+           # hm <- heatmap.2(as.matrix(mat[[1]]), Rowv=T, Colv=T, scale="none", hclust=function(x) hclust(x,method=clustmethod), distfun=function(x) as.dist((1-cor(t(x)))), margin = c(7,9), density.info=c("none"),trace=c("none"))
+           # hc <- as.dendrogram(hm$colDendrogram)
+            hc <- hclust(as.dist((1-cor(mat[[1]]))), method=clustmethod)
+          
         } else {
-          #  hm <- heatmap.2(as.matrix(mat[[1]]), scale="none", Rowv=T, Colv=T, hclust=function(c) {hclust(c,method=clustmethod)}, distfun=function(c) {dist(c,method=distmethod)}, margin = c(7,9), density.info=c("none"),trace=c("none"))
+           # hm <- heatmap.2(as.matrix(mat[[1]]), scale="none", Rowv=T, Colv=T, hclust=function(c) {hclust(c,method=clustmethod)}, distfun=function(c) {dist(c,method=distmethod)}, margin = c(7,9), density.info=c("none"),trace=c("none"))
+          #  hc <- as.dendrogram(hm$colDendrogram)
           hc <- hclust(dist(t(mat$data), method= distmethod), method=clustmethod)
+            
         }
         
         ##    Hierarchical clustering of samples
@@ -117,33 +128,43 @@ bootstrapfun <- function(obsdata, samplingdata, distmethod, clustmethod, scale, 
         plot(hc)
         
         ### cut the tree into input number of clusters
-        memb <- cutree(hc, k)[hc$order]
+        memb <- cutree(hc, k)
         # memb <- cutree(as.hclust(hm$colDendrogram), k)[as.hclust(hm$colDendrogram)$order]
         memb <- cbind(Row.Names = rownames(memb), memb, row.names = NULL)
         memb <- cbind.data.frame(rownames(memb),1:nrow(memb), memb) 
         memb
         
         contab[[i]] <- contingencyfun(memb)
+        
         if (is.function(updateProgress)) {
-          text <- paste0("Iteration #: ", i)
-          updateProgress(detail = text) }
+           text <- paste0("Iteration #: ", i, " of ", n.iter)
+            updateProgress(detail = text) }
         print(i)
       }
       
       # summarize each iteration row wise in a data frame
       my.matrix <- data.frame(matrix(unlist(contab), nrow=n.iter, byrow=T)) #no. of iterations
-      my.matrix$p.value <- apply(my.matrix, 1, function(x) pvaluefunc(x))
+     
+      perms.pvalue <- apply(my.matrix, 1, function(x) pvaluefunc(x))
       # my.matrix$Test <- length(which(my.matrix$p.value >= pobs))
       
-      #calculate the pvalue to test significance of the CpG sites compared to  random sets of the same no. in separating T from N
-      pvalue <- (length(which(my.matrix$p.value >= pobs))+1)/(n.iter+1)
+      No <- ifelse(perms.pvalue > pobs, 1, 0)
       
-      return(pvalue)
+      #calculate the pvalue to test significance of the CpG sites compared to  random sets of the same no. in separating T from N
+      pvalue <- 1- (length(which(No==1))/(n.iter))
+      
+      hist(perms.pvalue, main = "Histogram")
+      abline(v= pobs)
+      
+      return(list(p.value= pvalue, p.obs = pobs, perms=  perms.pvalue) )
       
     }
     else
       stop("Sample size selected is larger than the dataset itself! Please select smaller sample size")
   }
+  
   else
     stop("p-value from the obs data is not statistically significant, thus testing for random sites to assess their significance does not make sense")
-}
+  } 
+  
+  }
