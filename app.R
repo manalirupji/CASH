@@ -47,8 +47,8 @@ ui <- fluidPage(
            tabsetPanel(type = "tabs", 
                        tabPanel("ReadMe", htmlOutput("ReadMe"), tableOutput("Eg"), htmlOutput("Caption1"), tableOutput("Eg2"), htmlOutput("Caption2"), htmlOutput("blurp"), value = 1),
                        tabPanel("HeatMap", plotOutput("plot", width = 1200, height = 1200 ), value=2), 
-                       tabPanel("Column Dendrogram", plotOutput("plot1", height= 600, width = 1400), htmlOutput("display"), br(), DT::dataTableOutput("df"), htmlOutput("pv"), htmlOutput("pvalue"), plotOutput("pvalplot1", height= 600, width = 600), value=3), 
-                       tabPanel("Row Dendrogram", plotOutput("plot2", height = 600, width = 1400), htmlOutput("display2"), br(), DT::dataTableOutput("df2"), htmlOutput("pv2"), htmlOutput("pvalue2"), plotOutput("pvalplot2", height= 600, width = 600), value =4),
+                       tabPanel("Column Dendrogram", plotOutput("plot1", height= 600, width = 1200), htmlOutput("display"), br(), DT::dataTableOutput("df"), htmlOutput("pv"), htmlOutput("pvalue"), plotOutput("pvalplot1", height= 600, width = 600), value=3), 
+                       tabPanel("Row Dendrogram", plotOutput("plot2", height = 600, width = 1200), htmlOutput("display2"), br(), DT::dataTableOutput("df2"), htmlOutput("pv2"), htmlOutput("pvalue2"), plotOutput("pvalplot2", height= 600, width = 600), value =4),
                        id = "conditionedPanels"
            )
     ),
