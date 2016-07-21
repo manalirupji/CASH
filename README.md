@@ -1,13 +1,13 @@
 # Clustering Analysis with Shiny HeatMap (CASH)
 
-Is a shiny tool that lets you create a HeatMap with only the minimum knowledge of heatmaps and no coding experience. The user may upload their own data or use the provided example data to generate the HeatMap using any distance or clustering method of their choice. The column and row dendrograms are displayed individually in separate tabs. If you wish to know the samples within each cluster, this information can be downloaded using the cutree download button inside the row/column dendrogram tab. The novelty about this app is that it can also provide a pvalue to test significance between the clusters.
+Is a shiny tool that lets you create a HeatMap with only the minimum knowledge of heatmaps and minimal coding experience. The user may upload their own data or use the provided BRCA example data to generate the HeatMap using any distance or clustering method of their choice. Along with the HeatMap, the column and row dendrograms are displayed individually in separate tabs. If you wish to know the samples within each cluster, this information can be downloaded using the cutree download button inside the row/column dendrogram tab. The novelty about this app is that it is highly reproducible and also provides a p-value to test significance between the clusters.
 
 #### INSTALLATION
 Firstly, you should have the most recent version of R or RStudio.
 Next install required packages. Cut and paste what's below in an R session.
 
 ``` R
-install.packages(c("shiny", "shinyFiles", "shinyjs", "openxlsx", "openxlsx", "gplots", "reshape", "scales", "RColorBrewer", "stats", "graphics", "ggplot2", "gdata", "plyr", "dendextend", "DT"))
+install.packages(c("shiny", "shinyFiles", "shinyjs", "openxlsx", "openxlsx", "gplots", "reshape", "scales", "RColorBrewer", "stats", "graphics", "ggplot2", "gdata", "plyr", "dendextend", "DT", "gridExtra"))
 source("http://bioconductor.org/biocLite.R")
 biocLite("impute")
 ```
