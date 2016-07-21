@@ -125,7 +125,7 @@ bootstrapfun <- function(obsdata, samplingdata, distmethod, clustmethod, scale, 
         #hc <- hclust(hm$colDendrogram)
         
         #hclust(dist(t(z$data),method= distmethod), method = clustmethod) # will need to change depending on the clustring used
-        plot(hc)
+       # plot(hc)
         
         ### cut the tree into input number of clusters
         memb <- cutree(hc, k)
@@ -153,8 +153,8 @@ bootstrapfun <- function(obsdata, samplingdata, distmethod, clustmethod, scale, 
       #calculate the pvalue to test significance of the CpG sites compared to  random sets of the same no. in separating T from N
       pvalue <- 1- (length(which(No==1))/(n.iter))
       
-      hist(perms.pvalue, main = "Histogram")
-      abline(v= pobs)
+      #hist(perms.pvalue, main = "Histogram")
+      #abline(v= pobs)
       
       return(list(p.value= pvalue, p.obs = pobs, perms=  perms.pvalue) )
       
