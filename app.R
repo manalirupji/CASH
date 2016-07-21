@@ -1,9 +1,10 @@
 ################################################
 ############## LOAD PACKAGES ###################
 ################################################
+rm(list=ls())
 
 # Load additional packages
-x <- c("openxlsx", "gplots", "reshape2", "scales", "RColorBrewer", "stats", "graphics", "ggplot2", "gdata", "plyr", "dendextend", "DT")
+x <- c("openxlsx", "gplots", "reshape2", "scales", "RColorBrewer", "stats", "graphics", "ggplot2", "gdata", "plyr", "dendextend", "DT", "gridExtra")
 lapply(x, require, character.only=TRUE)
 
 # Load shiny packages
@@ -16,7 +17,7 @@ library(shinyjs)
 ################################################
 
 ui <- fluidPage(
-  titlePanel("MIA (Minimum Information About) - HeatMap"),
+  titlePanel("Clustering Analysis with Shiny HeatMap (CASH)"),
   fluidRow(
     column(2,
            wellPanel(
@@ -34,25 +35,25 @@ ui <- fluidPage(
                             wellPanel(
                               textInput("fname", "Type the file name you would like to save as", value = "HeatMap"),
                               downloadButton('downloadPlots', 'Download HeatMap and dendrograms'),
-                            br(),
-                            conditionalPanel("input.conditionedPanels == 3",   
-                                              h5(downloadLink('downloadCuttree', 'Download Column clusters after cut-tree'))),
-                            conditionalPanel("input.conditionedPanels == 4", 
-                                             h5(downloadLink('downloadCuttree2', 'Download Row clusters after cut-tree')))
-                          )
+                              br(),
+                              conditionalPanel("input.conditionedPanels == 3",   
+                                               h5(downloadLink('downloadCuttree', 'Download Column clusters after cut-tree'))),
+                              conditionalPanel("input.conditionedPanels == 4", 
+                                               h5(downloadLink('downloadCuttree2', 'Download Row clusters after cut-tree')))
+                            )
            )
     ),
     column(8,
            tabsetPanel(type = "tabs", 
                        tabPanel("ReadMe", htmlOutput("ReadMe"), tableOutput("Eg"), htmlOutput("Caption1"), tableOutput("Eg2"), htmlOutput("Caption2"), htmlOutput("blurp"), value = 1),
                        tabPanel("HeatMap", plotOutput("plot", width = 1200, height = 1200 ), value=2), 
-                       tabPanel("Column Dendrogram", plotOutput("plot1", height= 600, width = 1400), htmlOutput("display"), br(), DT::dataTableOutput("df"), htmlOutput("pv"), htmlOutput("pvalue"), value=3), 
+                       tabPanel("Column Dendrogram", plotOutput("plot1", height= 600, width = 1400), htmlOutput("display"), br(), DT::dataTableOutput("df"), htmlOutput("pv"), htmlOutput("pvalue"), plotOutput("pvalplot1", height= 600, width = 600), value=3), 
                        tabPanel("Row Dendrogram", plotOutput("plot2", height = 600, width = 1400), htmlOutput("display2"), br(), DT::dataTableOutput("df2"), htmlOutput("pv2"), htmlOutput("pvalue2"), value =4),
                        id = "conditionedPanels"
            )
     ),
     column(2, 
-           conditionalPanel("input.conditionedPanels==1 | input.conditionedPanels==2",
+           conditionalPanel("input.conditionedPanels==2",
                             wellPanel(  
                               ########## HeatMap Clustering options ##########
                               h4("Heat Map Options"),
@@ -67,9 +68,9 @@ ui <- fluidPage(
                             wellPanel(  
                               h4("Clustering Measures"),
                               selectInput("dist", "Distance Method",
-                                          c("euclidean", "maximum", "manhattan", "canberra", "binary", "minkowski", "pearson correlation")),
+                                          c("pearson correlation", "euclidean", "maximum", "manhattan", "canberra", "binary", "minkowski")),
                               selectInput("hclust", "Agglomerative Linkage Method", 
-                                          c("complete", "ward.D", "ward.D2", "single", "average","mcquitty", "median", "centroid")),
+                                          c("average", "complete", "ward.D", "ward.D2", "single", "mcquitty", "median", "centroid")),
                               conditionalPanel("input.conditionedPanels==1 | input.conditionedPanels==2", 
                                                radioButtons("clust_byrow", "Row dendrogram", inline = TRUE, c("TRUE", "FALSE")) ),
                               conditionalPanel("input.conditionedPanels==1 | input.conditionedPanels==2", 
@@ -83,8 +84,8 @@ ui <- fluidPage(
                             
                             wellPanel(
                               h4("Heat Map colors"),
-                              colourInput("low", "low", "green", returnName = TRUE, palette = "limited", showColour = "background"),
-                              colourInput("mid", "mid", "black", returnName = TRUE, palette = "limited", showColour = "background"),
+                              colourInput("low", "low", "blue", returnName = TRUE, palette = "limited", showColour = "background"),
+                              colourInput("mid", "mid", "white", returnName = TRUE, palette = "limited", showColour = "background"),
                               colourInput("high", "high", "red", returnName = TRUE, palette = "limited", showColour = "background") )
            ) ,
            
@@ -109,7 +110,7 @@ ui <- fluidPage(
                               conditionalPanel("input.conditionedPanels==3 & input.cutcolden == 'TRUE' & input.pvalue_cal == 'TRUE'", 
                                                numericInput("n", "Sample size for bootstrap:", 1000)),
                               conditionalPanel("input.conditionedPanels==3 & input.cutcolden == 'TRUE' & input.pvalue_cal == 'TRUE'", 
-                                               numericInput("n_iter", "No. of iterations for bootstrap:", 1000)),
+                                               numericInput("n_iter", "No. of iterations for bootstrap:", 10)),
                               conditionalPanel("input.conditionedPanels==3 & input.cutcolden == 'TRUE' & input.pvalue_cal == 'TRUE'", 
                                                actionButton("goButton", "Go!")),
                               conditionalPanel("input.conditionedPanels==3 & input.cutcolden == 'TRUE' & input.pvalue_cal == 'TRUE'", 
@@ -121,15 +122,15 @@ ui <- fluidPage(
                               conditionalPanel("input.conditionedPanels==4 & input.cutrowden == 'TRUE'", 
                                                numericInput("cuttree2", "Cut Row Dendrogram at:", 2)),
                               conditionalPanel("input.conditionedPanels==4 & input.cutrowden == 'TRUE'",
-                                               radioButtons("pvalue_cal2", "Assess significance of samples in separation of gene set into 2 clusters?:", inline = TRUE, c("No" = FALSE, "Yes" = TRUE))),
-                              conditionalPanel("input.conditionedPanels==4 & input.cutrowden == 'TRUE' & input.pvalue_cal2 == 'TRUE'" , 
-                                               selectInput("file3", label= "Select a dataset or upload your own with 'Load my own data.'", choices = c("Meth Sampling Data" ="Meth.Example", "Load my own sampling data" = "load_my_own_s_data"))),
+                                               radioButtons("pvalue_cal2", "Assess significance of samples in separation of gene set into 2 clusters (only for more than 2 cluster groups)?:", inline = TRUE, c("No" = FALSE, "Yes" = TRUE))),
+                              conditionalPanel("input.conditionedPanels==4 & input.cutrowden == 'TRUE' & input.pvalue_cal2 == 'TRUE' " , 
+                                               selectInput("file3", label= "Select a dataset or upload your own with 'Load my own data.'", choices = c("Example Meth Sampling Data" ="Meth.Example", "Load my own sampling data" = "load_my_own_s_data"))),
                               conditionalPanel("input.conditionedPanels==4 & input.file3 == 'load_my_own_s_data'",
                                                fileInput('file4', 'Choose file to upload to sample from to estimate significance of separation', accept=c('.xlsx','text/csv', 'text/comma-separated-values,text/plain', '.csv'))) ,
                               conditionalPanel("input.conditionedPanels==4 & input.cutrowden == 'TRUE' & input.pvalue_cal2 == 'TRUE'", 
                                                numericInput("n", "Sample size for bootstrap:", 1000)),
                               conditionalPanel("input.conditionedPanels==4 & input.cutrowden == 'TRUE' & input.pvalue_cal2 == 'TRUE'", 
-                                               numericInput("n_iter2", "No. of iterations for bootstrap:", 1000)),
+                                               numericInput("n_iter2", "No. of iterations for bootstrap:", 10)),
                               conditionalPanel("input.conditionedPanels==4 & input.cutrowden == 'TRUE' & input.pvalue_cal2 == 'TRUE'", 
                                                actionButton("goButton2", "Go!")),
                               conditionalPanel("input.conditionedPanels==4 & input.cutrowden == 'TRUE' & input.pvalue_cal2 == 'TRUE'", 
@@ -147,6 +148,8 @@ ui <- fluidPage(
 
 source("helper.R")
 shiny.maxRequestSize=50*1024^2
+b1= list(numeric(), numeric(), numeric())
+b2 = list(numeric(), numeric(), numeric())
 
 server <- function(input, output, session){
   
@@ -219,15 +222,15 @@ server <- function(input, output, session){
   })
   
   output$downloadEx <- downloadHandler(
-    filename= function() {paste('Example data set_meth data.csv')}, 
+    filename= function() {paste('Example data set_TCGA BRCA meth data.csv')}, 
     content = function(file) {
-      d <- readRDS("Example.data.rds")
+      d <- readRDS("C:/Users/MRUPJI/Documents/shiny/Modified New Shiny 10- row dendo cut/data/BRCA.Example.data.rds")
       write.csv(d, file, row.names = FALSE) }
   )
   
   data_input <- reactive({
     if(input$file1 == 'Example'){
-      d <- readRDS("Example.data.rds")
+      d <- readRDS("C:/Users/MRUPJI/Documents/shiny/Modified New Shiny 10- row dendo cut/data/BRCA.Example.data.rds")
     }
     else if(input$file1 == 'load_my_own'){
       inFile <- input$file2
@@ -259,7 +262,7 @@ server <- function(input, output, session){
       row.groups <- as.character(as.vector(data[,2]))
       row.groups <- row.groups[-1]
       row.groups.name <- names(table(row.groups))
-      number.row.groups <- length(row.groups.name)
+      number.row.groups <<- length(row.groups.name)
       
       ### column groups
       col.groups <- as.character(as.vector(data[1,]))
@@ -371,29 +374,29 @@ server <- function(input, output, session){
       if(number.row.groups==1) { 
         cell2 <- c(rep(row.groups.name, number.row.groups))
         cc2 <- rep(col1[50], length(cell2))
-        cc2[1:table(row.groups)[[1]]] <- 'blue'
+        cc2[1:table(row.groups)[[1]]] <- 'grey'
       } else if(number.row.groups==2) {
         cell2 <- c(rep(row.groups.name[1], table(row.groups)[[1]]), rep(row.groups.name[2],table(row.groups)[[2]]))
         cc2 <- rep(col1[50], length(cell2))
-        cc2[1:table(row.groups)[[1]]] <- 'blue'
+        cc2[1:table(row.groups)[[1]]] <- 'grey'
         cc2[table(row.groups)[[1]]+1:table(row.groups)[[2]]] <- 'orange'  
       } else if(number.row.groups==3) {
         cell2 <- c(rep(row.groups.name[1], table(row.groups)[[1]]), rep(row.groups.name[2],table(row.groups)[[2]]), rep(row.groups.name[3],table(row.groups)[[3]])) 
         cc2 <- rep(col1[50], length(cell2))
-        cc2[1:table(row.groups)[[1]]] <- 'blue'
+        cc2[1:table(row.groups)[[1]]] <- 'grey'
         cc2[table(row.groups)[[1]]+1:table(row.groups)[[2]]] <- 'orange'
         cc2[table(row.groups)[[1]]+table(row.groups)[[2]]+1:table(row.groups)[[3]]] <- 'hotpink'
       } else if(number.row.groups==4) {
         cell2 <- c(rep(row.groups.name[1], table(row.groups)[[1]]), rep(row.groups.name[2],table(row.groups)[[2]]), rep(row.groups.name[3],table(row.groups)[[3]]), rep(row.groups.name[4],table(row.groups)[[4]])) 
         cc2 <- rep(col1[50], length(cell2))
-        cc2[1:table(row.groups)[[1]]] <- 'blue'
+        cc2[1:table(row.groups)[[1]]] <- 'grey'
         cc2[table(row.groups)[[1]]+1:table(row.groups)[[2]]] <- 'orange'
         cc2[table(row.groups)[[1]]+table(row.groups)[[2]]+1:table(row.groups)[[3]]] <- 'hotpink'
         cc2[table(row.groups)[[1]]+table(row.groups)[[2]]+table(row.groups)[[3]]+1:table(row.groups)[[4]]] <- 'gray'
       } else if(number.row.groups==5) {
         cell2 <- c(rep(row.groups.name[1], table(row.groups)[[1]]), rep(row.groups.name[2],table(row.groups)[[2]]), rep(row.groups.name[3],table(row.groups)[[3]]), rep(row.groups.name[4],table(row.groups)[[4]]), rep(row.groups.name[5],table(row.groups)[[5]])) 
         cc2 <- rep(col1[50], length(cell2))
-        cc2[1:table(row.groups)[[1]]] <- 'blue'
+        cc2[1:table(row.groups)[[1]]] <- 'grey'
         cc2[table(row.groups)[[1]]+1:table(row.groups)[[2]]] <- 'orange'
         cc2[table(row.groups)[[1]]+table(row.groups)[[2]]+1:table(row.groups)[[3]]] <- 'hotpink'
         cc2[table(row.groups)[[1]]+table(row.groups)[[2]]+table(row.groups)[[3]]+1:table(row.groups)[[4]]] <- 'gray'
@@ -401,7 +404,7 @@ server <- function(input, output, session){
       } else if(number.row.groups==6) {
         cell2 <- c(rep(row.groups.name[1], table(row.groups)[[1]]), rep(row.groups.name[2],table(row.groups)[[2]]), rep(row.groups.name[3],table(row.groups)[[3]]), rep(row.groups.name[4],table(row.groups)[[4]]), rep(row.groups.name[5],table(row.groups)[[5]]), rep(row.groups.name[6],table(row.groups)[[6]])) 
         cc2 <- rep(col1[50], length(cell2))
-        cc2[1:table(row.groups)[[1]]] <- 'blue'
+        cc2[1:table(row.groups)[[1]]] <- 'grey'
         cc2[table(row.groups)[[1]]+1:table(row.groups)[[2]]] <- 'orange'
         cc2[table(row.groups)[[1]]+table(row.groups)[[2]]+1:table(row.groups)[[3]]] <- 'hotpink'
         cc2[table(row.groups)[[1]]+table(row.groups)[[2]]+table(row.groups)[[3]]+1:table(row.groups)[[4]]] <- 'gray'
@@ -522,23 +525,23 @@ server <- function(input, output, session){
       
       colDen <- reactive({
         if(input$cutcolden == 'TRUE') {
-        cuttable <- as.data.frame(cutree(as.hclust(hm$colDendrogram), k=input$cuttree)[as.hclust(hm$colDendrogram)$order])
-        cuttable <- cbind.data.frame(rownames(cuttable), cuttable)
-        names(cuttable)[1] <- "Sample"
-        names(cuttable)[2] <- "Cluster"
-        data_l1_l2 <- data_input()
-        data_l1_l2 <- data_l1_l2[1,c(-1, -2)]
-        t_data_l1_l2 <- t(data_l1_l2)
-        t_data_l1_l2 <- cbind.data.frame(rownames(t_data_l1_l2), t_data_l1_l2)
-        names(t_data_l1_l2)[1] <- "Sample"
-        names(t_data_l1_l2)[2] <- "Group"
-        m <- merge(cuttable, t_data_l1_l2, by = "Sample", sort= F)
-        m <- m[, c(1, 3, 2)]
+          cuttable <- as.data.frame(cutree(as.hclust(hm$colDendrogram), k=as.numeric(input$cuttree))[as.hclust(hm$colDendrogram)$order])
+          cuttable <- cbind.data.frame(rownames(cuttable), cuttable)
+          names(cuttable)[1] <- "Sample"
+          names(cuttable)[2] <- "Cluster"
+          data_l1_l2 <- data_input()
+          data_l1_l2 <- data_l1_l2[1,c(-1, -2)]
+          t_data_l1_l2 <- t(data_l1_l2)
+          t_data_l1_l2 <- cbind.data.frame(rownames(t_data_l1_l2), t_data_l1_l2)
+          names(t_data_l1_l2)[1] <- "Sample"
+          names(t_data_l1_l2)[2] <- "Group"
+          m.cut.data <- merge(cuttable, t_data_l1_l2, by = "Sample", sort= F)
+          m.cut.data <- m.cut.data[, c(1, 3, 2)]
         }
         else {
           return(NULL)
         } 
-          
+        
       })
       
       output$display <- renderUI({
@@ -564,20 +567,22 @@ server <- function(input, output, session){
         })
       
       output$pv <- renderUI({
-        if(input$cutcolden == 'TRUE' & number.col.groups == 2 ){
-          HTML(paste("<br/>", paste("Would you want to assess gene set significance in the separation of specimens into two clusters? (Yes/No)"), sep = "<br>")) 
+        if(input$cutcolden == 'TRUE' & number.col.groups >= 2 ){
+          HTML(paste("<br/>", br(strong(em(paste("Would you want to assess gene set significance in the separation of specimens into two clusters? (Yes/No)")))), sep = "<br>")) 
         }
         else 
           return(NULL)
       })
       
-      output$pvalue <- renderUI ({
+      output$pvalue <- renderUI({
         input$goButton
         
-        #  isolate(
+        isolate(
         if(input$cutcolden == 'TRUE') {
+          pobs.col <- numeric()
+          perms.col <- numeric()
           hc.cols <- as.hclust(hm$colDendrogram)
-          cut <- as.data.frame(cutree(hc.cols, k=input$cuttree)[hc.cols$order])
+          cut <- as.data.frame(cutree(hc.cols, k=as.numeric(input$cuttree))[hc.cols$order])
           #cuttable <- cut_table()
           cut <- cbind.data.frame(rownames(cut), cut)
           names(cut)[1] <- "Sample"
@@ -588,12 +593,13 @@ server <- function(input, output, session){
           t_data_l1_l2 <- cbind.data.frame(rownames(t_data_l1_l2), t_data_l1_l2)
           names(t_data_l1_l2)[1] <- "Sample"
           names(t_data_l1_l2)[2] <- "Group"
-          m <- merge(cut,t_data_l1_l2, by = "Sample")
+          mer <- merge(cut,t_data_l1_l2, by = "Sample")
+          mer <- mer[, c(1, 3, 2)]
           
           if(input$pvalue_cal == TRUE) 
           {
             if(input$file3 == 'Meth.Example'){
-              s_data <- readRDS("Meth450K.data.rds")
+              s_data <- readRDS("C:/Users/MRUPJI/Documents/shiny/Modified New Shiny 10- row dendo cut/data/Meth27K.GW.BRCA.Example.data.rds")
             }
             else {
               inFile2 <- input$file4
@@ -619,14 +625,40 @@ server <- function(input, output, session){
             }
             
             # Bootstrap data, and pass in the updateProgress function so that it can update the progress indicator.
-            b <- bootstrapfun(obsdata=m, samplingdata=s_data, distmethod = input$dist, clustmethod= input$hclust, scale=input$norm, n=input$n, k=input$cuttree, n.iter=input$n_iter, zlim=c(input$inSlider[1],input$inSlider[2]), sampler = "Column", updateProgress )
-            HTML(paste("<br/>", paste(strong("The p-value to test the gene set significance in the separation of specimens into 2 clusters is =")), em(b) , sep = " "))
+            b1 <<- bootstrapfun(obsdata=mer, samplingdata=s_data, distmethod = input$dist, clustmethod= input$hclust, scale=input$norm, n=as.numeric(input$n), k=as.numeric(input$cuttree), n.iter=input$n_iter, zlim=c(input$inSlider[1],input$inSlider[2]), sampler = "Column", updateProgress )
+           
+            hstring1 <- paste("&emsp;")
+            hstring2 <- paste("The p-value to test the gene set significance in the separation of specimens into 2 clusters is =", b1$p.value, sep = " ")
+            if(b1$p.value <= 0.05) {
+              hstring3  <- paste("The gene set cluster is statistically significant, i.e., a random sample of CpG probes/gene sets of the same number is Not able to separate the specimens when compared to the CpG probes/gene sets of interest of the same class")
+             } else {
+              hstring3  <- paste("The gene set cluster is NOT statistically significant, i.e., a random sample of CpG probes/gene sets of the same number is able to separate the specimens when compared to the CpG probes/gene sets of interest of the same class")
+           }
+            
+            HTML(paste(hstring1, h5(strong(hstring2)), h5(em(hstring3)), hstring1, hstring1,  sep = '<br/>'))
+            
+            
           }
         }
-        # )
+        
+        )
+       
       })
       
-      rowdendo <- reactive({
+      output$pvalplot1 <- renderPlot({
+        input$goButton
+        
+        isolate(
+          if(input$cutcolden == 'TRUE' & input$pvalue_cal == TRUE ) {
+            hist(b1$perms, main = "Histogram", xlab= paste("p-values from", input$n_iter, "permutations", sep = " "))
+            abline(v=b1$p.obs, col ="red", lty=3) 
+          }
+        )
+        })
+      
+      
+      
+        rowdendo <- reactive({
         par(cex = input$sizeRlable)
         dend2 <- as.dendrogram(hm$rowDendrogram)
         dd <- data.frame(v1 =hm$rowInd, v2=1:length(hm$rowInd))
@@ -637,17 +669,17 @@ server <- function(input, output, session){
         labels_colors(dend2) <- as.character(colbar2)
         plot(dend2, horiz = T)
         if(number.row.groups==1) {
-          legend("topright", legend = paste(row.groups.name), col = "blue", lty= 1, lwd = 10, pt.cex = 1, cex = 2*input$sizeRlable)
+          legend("topright", legend = paste(row.groups.name), col = "grey", lty= 1, lwd = 10, pt.cex = 1, cex = 2*input$sizeRlable)
         } else if(number.row.groups==2) {
-          legend("topright", legend = paste(c(row.groups.name[1], row.groups.name[2])), col = c("blue", "orange"), lty= 1, lwd = 10, pt.cex = 1, cex = 2*input$sizeRlable)
+          legend("topright", legend = paste(c(row.groups.name[1], row.groups.name[2])), col = c("grey", "orange"), lty= 1, lwd = 10, pt.cex = 1, cex = 2*input$sizeRlable)
         } else if(number.row.groups==3) {  
-          legend("topright", legend = paste(c(row.groups.name[1], row.groups.name[2], row.groups.name[3])), col = c("blue", "orange", "hotpink"), lty= 1, lwd = 10, pt.cex = 1, cex = 2*input$sizeRlable)
+          legend("topright", legend = paste(c(row.groups.name[1], row.groups.name[2], row.groups.name[3])), col = c("grey", "orange", "hotpink"), lty= 1, lwd = 10, pt.cex = 1, cex = 2*input$sizeRlable)
         } else if(number.row.groups==4) {  
-          legend("topright", legend = paste(c(row.groups.name[1], row.groups.name[2], row.groups.name[3], row.groups.name[4])), col = c("blue", "orange", "hotpink", "gray"), lty= 1, lwd = 10, pt.cex = 1, cex = 2*input$sizeRlable)
+          legend("topright", legend = paste(c(row.groups.name[1], row.groups.name[2], row.groups.name[3], row.groups.name[4])), col = c("grey", "orange", "hotpink", "gray"), lty= 1, lwd = 10, pt.cex = 1, cex = 2*input$sizeRlable)
         } else if(number.row.groups==5) {  
-          legend("topright", legend = paste(c(row.groups.name[1], row.groups.name[2], row.groups.name[3], row.groups.name[4], row.groups.name[5])), col = c("blue", "orange", "hotpink", "gray", "cyan"), lty= 1, lwd = 10, pt.cex = 1, cex = 2*input$sizeRlable)
+          legend("topright", legend = paste(c(row.groups.name[1], row.groups.name[2], row.groups.name[3], row.groups.name[4], row.groups.name[5])), col = c("grey", "orange", "hotpink", "gray", "cyan"), lty= 1, lwd = 10, pt.cex = 1, cex = 2*input$sizeRlable)
         } else if(number.row.groups==6) {  
-          legend("topright", legend = paste(c(row.groups.name[1], row.groups.name[2], row.groups.name[3], row.groups.name[4], row.groups.name[5], row.groups.name[6])), col = c("blue", "orange", "hotpink", "gray", "cyan", "maroon"), lty= 1, lwd = 10, pt.cex = 1, cex = 2*input$sizeRlable)
+          legend("topright", legend = paste(c(row.groups.name[1], row.groups.name[2], row.groups.name[3], row.groups.name[4], row.groups.name[5], row.groups.name[6])), col = c("grey", "orange", "hotpink", "gray", "cyan", "maroon"), lty= 1, lwd = 10, pt.cex = 1, cex = 2*input$sizeRlable)
         } 
       })
       
@@ -658,14 +690,14 @@ server <- function(input, output, session){
       
       rowDen <- reactive({
         if(input$cutrowden == 'TRUE') {
-        cuttable2 <- as.data.frame(cutree(as.hclust(hm$rowDendrogram), k=input$cuttree2)[as.hclust(hm$rowDendrogram)$order])
-        cuttable2 <- cbind.data.frame(rownames(cuttable2), cuttable2)
-        names(cuttable2)[1] <- "gene_id"
-        names(cuttable2)[2] <- "Cluster"
-        data_l1_l2_2 <- data_input()
-        data_l1_l2_2 <- data_l1_l2_2[-1, c(1,2)]
-        m2 <- merge(cuttable2, data_l1_l2_2, by = "gene_id", sort= F)
-        m2 <- m2[, c(1, 3, 2)]
+          cuttable2 <- as.data.frame(cutree(as.hclust(hm$rowDendrogram), k=as.numeric(input$cuttree2))[as.hclust(hm$rowDendrogram)$order])
+          cuttable2 <- cbind.data.frame(rownames(cuttable2), cuttable2)
+          names(cuttable2)[1] <- "gene_id"
+          names(cuttable2)[2] <- "Cluster"
+          data_l1_l2_2 <- data_input()
+          data_l1_l2_2 <- data_l1_l2_2[-1, c(1,2)]
+          m2 <- merge(cuttable2, data_l1_l2_2, by = "gene_id", sort= F)
+          m2 <- m2[, c(1, 3, 2)]
         }
         else {
           return(NULL)
@@ -696,7 +728,7 @@ server <- function(input, output, session){
         })
       
       output$pv2 <- renderUI({
-        if(input$cutrowden == 'TRUE' & number.row.groups == 2 ){
+        if(input$cutrowden == 'TRUE' & number.row.groups >= 2 ){
           HTML(paste("<br/>", paste("Would you want to assess significance of patients in the separation of genes into two clusters? (Yes/No)"), sep = "<br>")) 
         }
         else 
@@ -707,14 +739,14 @@ server <- function(input, output, session){
       output$pvalue2 <- renderUI ({
         input$goButton2
         
-        # isolate(
+        isolate(
         if(input$cutrowden == 'TRUE') {
           m2 <- rowDen()
           
           if(input$pvalue_cal2 == TRUE) 
           {
             if(input$file3 == 'Meth.Example'){
-              s_data <- readRDS("Meth450K.data.rds")
+              s_data <- readRDS("C:/Users/MRUPJI/Documents/shiny/Modified New Shiny 10- row dendo cut/data/Meth27K.GW.BRCA.Example.data.rds")
             }
             else {
               inFile2 <- input$file4
@@ -740,21 +772,51 @@ server <- function(input, output, session){
             }
             
             # Bootstrap data, and pass in the updateProgress function so that it can update the progress indicator.
-            b <- bootstrapfun(obsdata=m2, samplingdata=s_data, distmethod = input$dist, clustmethod= input$hclust, scale=input$norm, n=input$n, k=input$cuttree, n.iter=input$n_iter, zlim=c(input$inSlider[1],input$inSlider[2]), sampler = "Row", updateProgress )
-            HTML(paste("<br/>", paste(strong("The p-value to test the gene set significance in the separation of genes into 2 clusters is =")), em(b) , sep = " "))
+            b2 <<- bootstrapfun(obsdata=m2, samplingdata=s_data, distmethod = input$dist, clustmethod= input$hclust, scale=input$norm, n=as.numeric(input$n), k=as.numeric(input$cuttree), n.iter=input$n_iter, zlim=c(input$inSlider[1],input$inSlider[2]), sampler = "Row", updateProgress )
+          
+            rhstring1 <- paste("&emsp;")
+            rhstring2 <- paste("The p-value to test the sample significance in the separation of sample into 2 clusters is = =", em(b2$p.value), sep = " ")
+            if(b2$p.value <= 0.05) {
+              hstring3  <- paste("The cluster is statistically significant, i.e., a random sample of Sample sets of the same number is Not able to separate the gene sets when compared to the samples of interest of the same class")
+            } else {
+              hstring3  <- paste("The cluster is NOT statistically significant, i.e., a random sample of Sample sets of the same number is able to separate the gene sets when compared to the samples of interest of the same class")
+            }
+            
+            HTML(paste(rhstring1, h5(strong(rhstring2)), h5(em(rhstring3)), rhstring1, rhstring1,  sep = '<br/>'))
+            
+            
+            
           }
+          
+        
         }
-        #   )
+        
+       )
       })
       
+      output$pvalueplot2 <- renderPlot({
+        hist(b2$perms)
+        abline(v= b2$p.obs)
+      })
+      
+      df <- rbind.data.frame(c("Data Normalization Type", input$norm),
+                             c("Distance Method", input$dist),
+                             c("Clustering Method", input$hclust),
+                             c("Scale", paste(input$inSlider[1], input$inSlider[2], sep=":")),
+                             c("HeatMap colors", paste(input$low, input$mid, input$high, sep="-")))
+      names(df)[1] <- "Parameters"
+      names(df)[2] <- "Value Selected"
       
       ###################
       # Output pdf plot #
       ###################
       
       # Random name for the pdf file so users don't overwrite one another
-      pdf_file <<-paste(paste(input$fname, input$hclust, "clustering", input$dist, "distance", sep="_"),".pdf",sep="")
+      pdf_file <<- paste(paste(input$fname, input$hclust, "clustering", input$dist, "distance", sep="_"),".pdf",sep="")
       pdf(file=pdf_file, height= 12, width=10)
+    
+      grid.table(df, rows= NULL)
+      
       eval(hm$call) # call the heatmap here
       if(number.col.groups==1) {
         legend("topright", legend = paste(col.groups.name), col = "pink", lty= 1, lwd = 10, pt.cex = 1, cex = 0.9)
@@ -820,18 +882,28 @@ server <- function(input, output, session){
       labels_colors(dend2) <- as.character(colbar2)
       plot(dend2, horiz = T, main="Row Dendrogram")
       if(number.row.groups==1) {
-        legend("topright", legend = paste(row.groups.name), col = "blue", lty= 1, lwd = 10, pt.cex = 1, cex = input$sizeRlable)
+        legend("topright", legend = paste(row.groups.name), col = "grey", lty= 1, lwd = 10, pt.cex = 1, cex = input$sizeRlable)
       } else if(number.row.groups==2) {
-        legend("topright", legend = paste(c(row.groups.name[1], row.groups.name[2])), col = c("blue", "orange"), lty= 1, lwd = 10, pt.cex = 1, cex = input$sizeRlable)
+        legend("topright", legend = paste(c(row.groups.name[1], row.groups.name[2])), col = c("grey", "orange"), lty= 1, lwd = 10, pt.cex = 1, cex = input$sizeRlable)
       } else if(number.row.groups==3) {  
-        legend("topright", legend = paste(c(row.groups.name[1], row.groups.name[2], row.groups.name[3])), col = c("blue", "orange", "hotpink"), lty= 1, lwd = 10, pt.cex = 1, cex = input$sizeRlable)
+        legend("topright", legend = paste(c(row.groups.name[1], row.groups.name[2], row.groups.name[3])), col = c("grey", "orange", "hotpink"), lty= 1, lwd = 10, pt.cex = 1, cex = input$sizeRlable)
       } else if(number.row.groups==4) {  
-        legend("topright", legend = paste(c(row.groups.name[1], row.groups.name[2], row.groups.name[3], row.groups.name[4])), col = c("blue", "orange", "hotpink", "gray"), lty= 1, lwd = 10, pt.cex = 1, cex = input$sizeRlable)
+        legend("topright", legend = paste(c(row.groups.name[1], row.groups.name[2], row.groups.name[3], row.groups.name[4])), col = c("grey", "orange", "hotpink", "gray"), lty= 1, lwd = 10, pt.cex = 1, cex = input$sizeRlable)
       } else if(number.row.groups==5) {  
-        legend("topright", legend = paste(c(row.groups.name[1], row.groups.name[2], row.groups.name[3], row.groups.name[4], row.groups.name[5])), col = c("blue", "orange", "hotpink", "gray", "cyan"), lty= 1, lwd = 10, pt.cex = 1, cex = input$sizeRlable)
+        legend("topright", legend = paste(c(row.groups.name[1], row.groups.name[2], row.groups.name[3], row.groups.name[4], row.groups.name[5])), col = c("grey", "orange", "hotpink", "gray", "cyan"), lty= 1, lwd = 10, pt.cex = 1, cex = input$sizeRlable)
       } else if(number.row.groups==6) {  
-        legend("topright", legend = paste(c(row.groups.name[1], row.groups.name[2], row.groups.name[3], row.groups.name[4], row.groups.name[5], row.groups.name[6])), col = c("blue", "orange", "hotpink", "gray", "cyan", "maroon"), lty= 1, lwd = 10, pt.cex = 1, cex = input$sizeRlable)
+        legend("topright", legend = paste(c(row.groups.name[1], row.groups.name[2], row.groups.name[3], row.groups.name[4], row.groups.name[5], row.groups.name[6])), col = c("grey", "orange", "hotpink", "gray", "cyan", "maroon"), lty= 1, lwd = 10, pt.cex = 1, cex = input$sizeRlable)
       } 
+      
+      if(input$goButton ) {
+        hist(b1$perms, main = "Gene set significance in separation of Clusters", xlab= paste("p-values from", input$n_iter, "permutations", sep = " "))
+        abline(v=b1$p.obs, col ="red", lty=3, lwd = 3)
+      }
+      
+      if(input$goButton2) {
+       hist(b2$perms, main = "Cluster significance in separation of gene sets ", xlab= paste("p-values from", input$n_iter, "permutations", sep = " "))
+       abline(v=b2$p.obs, col ="blue", lty=3)
+      }
       
       dev.off()
       
@@ -841,7 +913,7 @@ server <- function(input, output, session){
       output$downloadPlots <- downloadHandler(
         
         filename <- function() {
-          paste('MIA-HeatMap_-', Sys.time(),'.pdf', sep='')
+          paste('CASH_', Sys.time(),'.pdf', sep='')
         },
         content <- function(file) {
           file.copy(pdf_file,file, overwrite=TRUE)
