@@ -47,8 +47,8 @@ ui <- fluidPage(
            tabsetPanel(type = "tabs", 
                        tabPanel("ReadMe", htmlOutput("ReadMe"), tableOutput("Eg"), htmlOutput("Caption1"), tableOutput("Eg2"), htmlOutput("Caption2"), htmlOutput("blurp"), value = 1),
                        tabPanel("HeatMap", plotOutput("plot", width = 1200, height = 1200 ), value=2), 
-                       tabPanel("Column Dendrogram", plotOutput("plot1", height= 600, width = 1200), htmlOutput("display"), br(), DT::dataTableOutput("df"), htmlOutput("pv"), htmlOutput("pvalue"), plotOutput("pvalplot1", height= 600, width = 600), value=3), 
-                       tabPanel("Row Dendrogram", plotOutput("plot2", height = 600, width = 1200), htmlOutput("display2"), br(), DT::dataTableOutput("df2"), htmlOutput("pv2"), htmlOutput("pvalue2"), plotOutput("pvalplot2", height= 600, width = 600), value =4),
+                       tabPanel("Column Dendrogram", plotOutput("plot1", height= 600, width = 1000), htmlOutput("display"), br(), DT::dataTableOutput("df"), htmlOutput("pv"), htmlOutput("pvalue"), plotOutput("pvalplot1", height= 600, width = 600), value=3), 
+                       tabPanel("Row Dendrogram", plotOutput("plot2", height = 600, width = 1000), htmlOutput("display2"), br(), DT::dataTableOutput("df2"), htmlOutput("pv2"), htmlOutput("pvalue2"), plotOutput("pvalplot2", height= 600, width = 600), value =4),
                        id = "conditionedPanels"
            )
     ),
@@ -79,7 +79,7 @@ ui <- fluidPage(
                                                radioButtons("dispRow", "Display Row labels?:", inline = TRUE,c("No", "Yes")),
                                                conditionalPanel("input.dispRow == 'Yes'", sliderInput("size1", "If yes, Row Label font size", min = 0.01, max = 3, value = 0.5)),
                                                radioButtons("dispCol", "Display Col labels?:", inline = TRUE, c("No", "Yes")),
-                                               conditionalPanel("input.dispCol == 'Yes'", sliderInput("size2", "If yes, Col Label font size", min = 0.01, max = 3, value = 1.2) ))
+                                               conditionalPanel("input.dispCol == 'Yes'", sliderInput("size2", "If yes, Col Label font size", min = 0.01, max = 3, value = 0.5) ))
                             ), 
                             
                             wellPanel(
@@ -418,9 +418,15 @@ server <- function(input, output, session){
       }
       
       ############# HEATPLOT2 EQUIVALENT HEATMAP2 CLUSTERING ###############
+      z <- list()
       
       #  data <- as.numeric(data)
+      if(input$norm == "none")
+      {
+        z[[1]] <- as.matrix(data)
+      } else {
       z <- zClust(data, scale =input$norm, zlim=c(input$inSlider[1],input$inSlider[2]))
+      }
       
       if(input$dist == "pearson correlation") {
         if(input$dispRow == "No" & input$dispCol=='No') {
