@@ -42,9 +42,9 @@ zClust <- function(x, scale, zlim)
     z <- pmin(pmax(z,zlim[1]), zlim[2])
     return(list(data=z))
   }
-  else {
-    return(list(data))
-  }
+ # else {
+#    return(list(as.matrix(data)))
+#  }
 }
 
 
