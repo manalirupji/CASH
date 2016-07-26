@@ -23,7 +23,7 @@ pvaluefunc <- function(mt)
    # if(length(m[m<5]) != 0) {
    pv <- fisher.test(as.matrix(m))$p.value
   #  }else {
-  # pv <- chisq.test(as.matrix(m))$p.value
+  #pv <- chisq.test(as.matrix(m))$p.value
   # }
   return(pv)
 }
