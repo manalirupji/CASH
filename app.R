@@ -41,7 +41,7 @@ ui <- fluidPage(
              selectInput("file1",label= "Select an example dataset or upload your own with 'Load my own data.'", 
                          choices = c("Example Data File"="Example", "Load my own data" = "load_my_own")),
              conditionalPanel("input.file1 == 'load_my_own'",
-                              fileInput('file2', 'Choose file to upload (maximum size 10 MB)', accept=c('.xlsx','text/csv', 'text/comma-separated-values,text/plain', '.csv'))), 
+                              fileInput('file2', 'Choose file to upload (maximum size 50 MB)', accept=c('.xlsx','text/csv', 'text/comma-separated-values,text/plain', '.csv'))), 
              conditionalPanel("input.file1 == 'Example' & input.conditionedPanels==1",
                               downloadButton('downloadEx', 'Download Example DataSet')),
              conditionalPanel("input.conditionedPanels==1",
@@ -63,8 +63,8 @@ ui <- fluidPage(
            tabsetPanel(type = "tabs", 
                        tabPanel("ReadMe", htmlOutput("ReadMe"), tableOutput("Eg"), htmlOutput("Caption1"), tableOutput("Eg2"), htmlOutput("Caption2"), htmlOutput("blurp"), value = 1),
                        tabPanel("HeatMap", plotOutput("plot", width = 1200, height = 1200 ), value=2), 
-                       tabPanel("Column Dendrogram", plotOutput("plot1", height= 600, width = 1000), htmlOutput("display"), br(), DT::dataTableOutput("df"), htmlOutput("pv"), htmlOutput("pvalue"),  value=3), 
-                       tabPanel("Row Dendrogram", plotOutput("plot2", height = 600, width = 1000), htmlOutput("display2"), br(), DT::dataTableOutput("df2"), htmlOutput("pv2"), htmlOutput("pvalue2"),  value =4),
+                       tabPanel("Column Dendrogram", plotOutput("plot1", height= 600, width = 1400), htmlOutput("display"), br(), DT::dataTableOutput("df"), htmlOutput("pv"), htmlOutput("pvalue"),  value=3), 
+                       tabPanel("Row Dendrogram", plotOutput("plot2", height = 600, width = 1400), htmlOutput("display2"), br(), DT::dataTableOutput("df2"), htmlOutput("pv2"), htmlOutput("pvalue2"),  value =4),
                        id = "conditionedPanels"
            )
     ),
@@ -122,7 +122,7 @@ ui <- fluidPage(
                               conditionalPanel("input.conditionedPanels==3 & input.cutcolden == 'TRUE' & input.pvalue_cal == 'TRUE'" , 
                                                selectInput("file3", label= "Select a dataset or upload your own with 'Load my own data.'", choices = c("Meth Sampling Data" ="Meth.Example", "Load my own sampling data" = "load_my_own_s_data"))),
                               conditionalPanel("input.conditionedPanels==3 & input.file3 == 'load_my_own_s_data'",
-                                               fileInput('file4', 'Choose file to upload to sample from to estimate significance of separation', accept=c('.xlsx','text/csv', 'text/comma-separated-values,text/plain', '.csv'))) ,
+                                               fileInput('file4', 'Choose file to upload to sample from to estimate significance of separation (Maximum size 100 MB)', accept=c('.xlsx','text/csv', 'text/comma-separated-values,text/plain', '.csv'))) ,
                               conditionalPanel("input.conditionedPanels==3 & input.cutcolden == 'TRUE' & input.pvalue_cal == 'TRUE'", 
                                                numericInput("n", "Sample size for bootstrap:", 1000)),
                               conditionalPanel("input.conditionedPanels==3 & input.cutcolden == 'TRUE' & input.pvalue_cal == 'TRUE'", 
@@ -132,7 +132,7 @@ ui <- fluidPage(
                               conditionalPanel("input.conditionedPanels==3 & input.cutcolden == 'TRUE' & input.pvalue_cal == 'TRUE'", 
                                                actionButton("goButton", "Go!")),
                               conditionalPanel("input.conditionedPanels==3 & input.cutcolden == 'TRUE' & input.pvalue_cal == 'TRUE'", 
-                                               p("Click the button to start sampling using bootstrap method for estimating the p-value. A progress indicator will appear shortly (~approx 10 s), on top of page indicating the status. Once complete, the p-value will be displayed in the main panel.")),
+                                               p("Click the button to start sampling using bootstrap method for estimating the p-value. A progress indicator will appear shortly (~approx 10 seconds), on top of page indicating the status. Once complete, the p-value will be displayed in the main panel.")),
                               
                               # Row Dendrogram tab
                               conditionalPanel("input.conditionedPanels==4", 
@@ -144,7 +144,7 @@ ui <- fluidPage(
                               conditionalPanel("input.conditionedPanels==4 & input.cutrowden == 'TRUE' & input.pvalue_cal2 == 'TRUE' " , 
                                                selectInput("file3", label= "Select a dataset or upload your own with 'Load my own data.'", choices = c("Example Meth Sampling Data" ="Meth.Example", "Load my own sampling data" = "load_my_own_s_data"))),
                               conditionalPanel("input.conditionedPanels==4 & input.file3 == 'load_my_own_s_data'",
-                                               fileInput('file4', 'Choose file to upload to sample from to estimate significance of separation', accept=c('.xlsx','text/csv', 'text/comma-separated-values,text/plain', '.csv'))) ,
+                                               fileInput('file5', 'Choose file to upload to sample from to estimate significance of separation (Maximum size 75 MB)', accept=c('.xlsx','text/csv', 'text/comma-separated-values,text/plain', '.csv'))) ,
                               conditionalPanel("input.conditionedPanels==4 & input.cutrowden == 'TRUE' & input.pvalue_cal2 == 'TRUE'", 
                                                numericInput("n2", "Sample size for bootstrap:", 1000)),
                               conditionalPanel("input.conditionedPanels==4 & input.cutrowden == 'TRUE' & input.pvalue_cal2 == 'TRUE'", 
@@ -154,7 +154,7 @@ ui <- fluidPage(
                               conditionalPanel("input.conditionedPanels==4 & input.cutrowden == 'TRUE' & input.pvalue_cal2 == 'TRUE'", 
                                                actionButton("goButton2", "Go!")),
                               conditionalPanel("input.conditionedPanels==4 & input.cutrowden == 'TRUE' & input.pvalue_cal2 == 'TRUE'", 
-                                               p("Click the button to start sampling using bootstrap method for estimating the p-value. A progress indicator will appear shortly (~approx 10 s), on top of page indicating the status. Once complete, the p-value will be displayed in the main panel."))
+                                               p("Click the button to start sampling using bootstrap method for estimating the p-value. A progress indicator will appear shortly (~approx 10 seconds), on top of page indicating the status. Once complete, the p-value will be displayed in the main panel."))
                               
                               )
            )
@@ -168,7 +168,7 @@ ui <- fluidPage(
 ################################################
 
 source("helper.R")
-shiny.maxRequestSize=50*1024^2
+options(shiny.maxRequestSize=1000*1024^2)
 #b1= list(numeric(), numeric(), numeric())
 #b2 = list(numeric(), numeric(), numeric())
 
@@ -636,7 +636,8 @@ server <- function(input, output, session){
               else if(grepl(".xlsx", inFile2[1])) { s_data = read.xlsx(as.character(inFile2$datapath), colNames = TRUE, rowNames = F) }
               else if(grepl(".csv", inFile2[1])) { s_data = read.csv(as.character(inFile2$datapath), header = TRUE, sep = ",", stringsAsFactors = F) }
               else if(grepl(".txt", inFile2[1])) { s_data = read.table(as.character(inFile2$datapath), header = TRUE, sep = "\t", stringsAsFactors = F) }
-            }
+              else if(grepl(".rds", inFile2[1])) { s_data = readRDS(as.character(inFile2$datapath)) }
+             }
             
             # Create a Progress object
             progress <- shiny::Progress$new()
@@ -764,7 +765,7 @@ server <- function(input, output, session){
           if(input$pvalue_cal2 == TRUE) 
           {
             if(input$file3 == 'Meth.Example'){
-              s_data <- readRDS("Meth27K.GW.BRCA.Example.data.rds")
+              s_data <- readRDS("data/Meth27K.GW.BRCA.Example.data.rds")
             }
             else {
               inFile2 <- input$file4
@@ -773,8 +774,9 @@ server <- function(input, output, session){
               else if(grepl(".xlsx", inFile2[1])) { s_data = read.xlsx(as.character(inFile2$datapath), colNames = TRUE, rowNames = F) }
               else if(grepl(".csv", inFile2[1])) { s_data = read.csv(as.character(inFile2$datapath), header = TRUE, sep = ",", stringsAsFactors = F) }
               else if(grepl(".txt", inFile2[1])) { s_data = read.table(as.character(inFile2$datapath), header = TRUE, sep = "\t", stringsAsFactors = F) }
-            }
-            
+              else if(grepl(".rds", inFile2[1])) { s_data = readRDS(as.character(inFile2$datapath)) }
+              
+            }                          
             # Create a Progress object
             progress <- shiny::Progress$new()
             progress$set(message = "Computing data", value = 0)
