@@ -765,7 +765,7 @@ server <- function(input, output, session){
           if(input$pvalue_cal2 == TRUE) 
           {
             if(input$file3 == 'Meth.Example'){
-              s_data <- readRDS("data/Meth27K.GW.BRCA.Example.data.rds")
+              s_data <- readRDS("Meth27K.GW.BRCA.Example.data.rds")
             }
             else {
               inFile2 <- input$file4
