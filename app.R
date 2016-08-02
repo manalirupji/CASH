@@ -142,9 +142,9 @@ ui <- fluidPage(
                               conditionalPanel("input.conditionedPanels==4 & input.cutrowden == 'TRUE'",
                                                radioButtons("pvalue_cal2", "Assess significance of samples in separation of gene set into 2 clusters (only for more than 2 cluster groups)?:", inline = TRUE, c("No" = FALSE, "Yes" = TRUE))),
                               conditionalPanel("input.conditionedPanels==4 & input.cutrowden == 'TRUE' & input.pvalue_cal2 == 'TRUE' " , 
-                                               selectInput("file3", label= "Select a dataset or upload your own with 'Load my own data.'", choices = c("Example Meth Sampling Data" ="Meth.Example", "Load my own sampling data" = "load_my_own_s_data"))),
-                              conditionalPanel("input.conditionedPanels==4 & input.file3 == 'load_my_own_s_data'",
-                                               fileInput('file5', 'Choose file to upload to sample from to estimate significance of separation (Maximum size 75 MB)', accept=c('.xlsx','text/csv', 'text/comma-separated-values,text/plain', '.csv'))) ,
+                                               selectInput("file5", label= "Select a dataset or upload your own with 'Load my own data.'", choices = c("Example Meth Sampling Data" ="Meth.Example", "Load my own sampling data" = "load_my_own_s_data"))),
+                              conditionalPanel("input.conditionedPanels==4 & input.file5 == 'load_my_own_s_data'",
+                                               fileInput('file6', 'Choose file to upload to sample from to estimate significance of separation (Maximum size 75 MB)', accept=c('.xlsx','text/csv', 'text/comma-separated-values,text/plain', '.csv'))) ,
                               conditionalPanel("input.conditionedPanels==4 & input.cutrowden == 'TRUE' & input.pvalue_cal2 == 'TRUE'", 
                                                numericInput("n2", "Sample size for bootstrap:", 1000)),
                               conditionalPanel("input.conditionedPanels==4 & input.cutrowden == 'TRUE' & input.pvalue_cal2 == 'TRUE'", 
@@ -260,7 +260,9 @@ server <- function(input, output, session){
       else if(grepl(".xlsx", inFile[1])) { d = read.xlsx(as.character(inFile$datapath), colNames = TRUE, rowNames = F) }
       else if(grepl(".csv", inFile[1])) { d = read.csv(as.character(inFile$datapath), header = TRUE, sep = ",", stringsAsFactors = F) }
       else if(grepl(".txt", inFile[1])) { d = read.table(as.character(inFile$datapath), header = TRUE, sep = "\t", stringsAsFactors = F) }
-    }
+      else if(grepl(".rds", inFile[1])) { d = read.table(as.character(inFile$datapath)) }
+      
+      }
     else 
       return(NULL)
     # dim(data)
@@ -602,7 +604,7 @@ server <- function(input, output, session){
       
      
       output$pvalue <- renderUI({
-        input$goButton
+        input$goButton 
         
         isolate(
          
@@ -756,7 +758,7 @@ server <- function(input, output, session){
       
       
       output$pvalue2 <- renderUI ({
-        input$goButton2
+        input$goButton2 
         
         isolate(
         if(input$cutrowden == 'TRUE') {
@@ -764,17 +766,17 @@ server <- function(input, output, session){
           
           if(input$pvalue_cal2 == TRUE) 
           {
-            if(input$file3 == 'Meth.Example'){
+            if(input$file5 == 'Meth.Example'){
               s_data <- readRDS("Meth27K.GW.BRCA.Example.data.rds")
             }
             else {
-              inFile2 <- input$file4
-              if (is.null(inFile2))
+              inFile3 <- input$file6
+              if (is.null(inFile3))
                 return(NULL)
-              else if(grepl(".xlsx", inFile2[1])) { s_data = read.xlsx(as.character(inFile2$datapath), colNames = TRUE, rowNames = F) }
-              else if(grepl(".csv", inFile2[1])) { s_data = read.csv(as.character(inFile2$datapath), header = TRUE, sep = ",", stringsAsFactors = F) }
-              else if(grepl(".txt", inFile2[1])) { s_data = read.table(as.character(inFile2$datapath), header = TRUE, sep = "\t", stringsAsFactors = F) }
-              else if(grepl(".rds", inFile2[1])) { s_data = readRDS(as.character(inFile2$datapath)) }
+              else if(grepl(".xlsx", inFile3[1])) { s_data = read.xlsx(as.character(inFile3$datapath), colNames = TRUE, rowNames = F) }
+              else if(grepl(".csv", inFile3[1])) { s_data = read.csv(as.character(inFile3$datapath), header = TRUE, sep = ",", stringsAsFactors = F) }
+              else if(grepl(".txt", inFile3[1])) { s_data = read.table(as.character(inFile3$datapath), header = TRUE, sep = "\t", stringsAsFactors = F) }
+              else if(grepl(".rds", inFile3[1])) { s_data = readRDS(as.character(inFile3$datapath)) }
               
             }                          
             # Create a Progress object
