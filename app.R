@@ -22,6 +22,7 @@ library(gridExtra)
 library(htmlwidgets)
 require(dendextend)
 library(cluster)
+library(matrixStats)
 
 # Load shiny packages
 library(shiny)
@@ -62,9 +63,9 @@ ui <- fluidPage(
     column(8,
            tabsetPanel(type = "tabs", 
                        tabPanel("ReadMe", htmlOutput("ReadMe"), tableOutput("Eg"), htmlOutput("Caption1"), tableOutput("Eg2"), htmlOutput("Caption2"), htmlOutput("blurp"), value = 1),
-                       tabPanel("HeatMap", plotOutput("plot", width = 1200, height = 1200 ), value=2), 
-                       tabPanel("Column Dendrogram", plotOutput("plot1", height= 600, width = 1400), htmlOutput("display"), br(), DT::dataTableOutput("df"), htmlOutput("pv"), htmlOutput("pvalue"),  value=3), 
-                       tabPanel("Row Dendrogram", plotOutput("plot2", height = 600, width = 1400), htmlOutput("display2"), br(), DT::dataTableOutput("df2"), htmlOutput("pv2"), htmlOutput("pvalue2"),  value =4),
+                       tabPanel("HeatMap", plotOutput("plot", width = 1300, height = 1300 ), value=2), 
+                       tabPanel("Column Dendrogram", plotOutput("plot1", height= 600, width = 1500), htmlOutput("display"), br(), DT::dataTableOutput("df"), htmlOutput("pv"), htmlOutput("pvalue"),  value=3), 
+                       tabPanel("Row Dendrogram", plotOutput("plot2", height = 600, width = 1500), htmlOutput("display2"), br(), DT::dataTableOutput("df2"), htmlOutput("pv2"), htmlOutput("pvalue2"),  value =4),
                        id = "conditionedPanels"
            )
     ),
@@ -73,8 +74,10 @@ ui <- fluidPage(
                             wellPanel(  
                               ########## HeatMap Clustering options ##########
                               h4("Heat Map Options"),
-                              selectInput("norm", "Normalization type",
-                                          c("row", "col", "both", "none")),
+                              selectInput("norm", "Normalization Type",
+                                          c("Z-Score", "Modified Z-Score", "none")),
+                              selectInput("norm2", "Normalize by:",
+                                          c("row", "col", "both")),
                               sliderInput("inSlider", "Scale Range",
                                           min = -10, max = 20, value = c(-2, 2)),
                               conditionalPanel("input.conditionedPanels==1 | input.conditionedPanels==2", 
@@ -245,13 +248,13 @@ server <- function(input, output, session){
   output$downloadEx <- downloadHandler(
     filename= function() {paste('Example data set_TCGA BRCA meth data.csv')}, 
     content = function(file) {
-      d <- readRDS("BRCA.Example.data.rds")
+      d <- readRDS("data/BRCA.Example.data.rds")
       write.csv(d, file, row.names = FALSE) }
   )
   
   data_input <- reactive({
     if(input$file1 == 'Example'){
-      d <- readRDS("BRCA.Example.data.rds")
+      d <- readRDS("data/BRCA.Example.data.rds")
     }
     else if(input$file1 == 'load_my_own'){
       inFile <- input$file2
@@ -438,14 +441,15 @@ server <- function(input, output, session){
       ############# HEATPLOT2 EQUIVALENT HEATMAP2 CLUSTERING ###############
       z <- list()
       
-      #  data <- as.numeric(data)
-      if(input$norm == "none")
-      {
-        z[[1]] <- as.matrix(data)
-      } else {
-      z <- zClust(data, scale =input$norm, zlim=c(input$inSlider[1],input$inSlider[2]))
-      }
-      
+      #data <- as.numeric(data)
+      if(input$norm == "Z-Score") {
+          z <- zClust(data, scale =input$norm2, zlim=c(input$inSlider[1],input$inSlider[2]))
+       } else if (input$norm == "Modified Z-Score") { 
+          z <- modzClust(data, scale =input$norm2, zlim=c(input$inSlider[1],input$inSlider[2]))
+       } else if(input$norm == "none") {
+          z[[1]] <- as.matrix(data)
+       }
+       
       if(input$dist == "pearson correlation") {
         if(input$dispRow == "No" & input$dispCol=='No') {
           hm <- heatmap.2(z[[1]], labRow = NA, labCol= NA, scale="none", Rowv=eval(parse(text=paste(input$clust_byrow))), Colv=eval(parse(text=paste(input$clust_bycol))), hclust=function(x) hclust(x,method=input$hclust), distfun=function(x) as.dist((1-cor(t(x)))),cexRow=input$size1,cexCol =input$size2,  key=TRUE,keysize=1.0, margin = c(input$inSlider2[1],input$inSlider2[2]), density.info=c("none"),trace=c("none"),col=col1,ColSideColors=cc1, RowSideColors = cc2)
@@ -629,7 +633,7 @@ server <- function(input, output, session){
           if(input$pvalue_cal == TRUE) 
           {
             if(input$file3 == 'Meth.Example'){
-              s_data <- readRDS("Meth27K.GW.BRCA.Example.data.rds")
+              s_data <- readRDS("data/Meth27K.GW.BRCA.Example.data.rds")
             }
             else {
               inFile2 <- input$file4
@@ -658,7 +662,7 @@ server <- function(input, output, session){
             
             
             # Bootstrap data, and pass in the updateProgress function so that it can update the progress indicator.
-            b1 <<- bootstrapfun(obsdata=mer, samplingdata=s_data, distmethod = input$dist, clustmethod= input$hclust, scale=input$norm, n=as.numeric(input$n), k=as.numeric(input$cuttree), n.iter=input$n_iter, zlim=c(input$inSlider[1],input$inSlider[2]), sampler = "Column", updateProgress )
+            b1 <<- bootstrapfun(obsdata=mer, samplingdata=s_data, distmethod = input$dist, clustmethod= input$hclust, norm= input$norm, scale=input$norm2, n=as.numeric(input$n), k=as.numeric(input$cuttree), n.iter=input$n_iter, zlim=c(input$inSlider[1],input$inSlider[2]), sampler = "Column", updateProgress )
            
             hstring1 <- paste("&emsp;")
             hstring2 <- paste("The p-value to test the gene set significance in the separation of specimens into 2 clusters is =", b1$p.value, sep = " ")
@@ -767,7 +771,7 @@ server <- function(input, output, session){
           if(input$pvalue_cal2 == TRUE) 
           {
             if(input$file5 == 'Meth.Example'){
-              s_data <- readRDS("Meth27K.GW.BRCA.Example.data.rds")
+              s_data <- readRDS("data/Meth27K.GW.BRCA.Example.data.rds")
             }
             else {
               inFile3 <- input$file6
@@ -794,7 +798,7 @@ server <- function(input, output, session){
             }
             
             # Bootstrap data, and pass in the updateProgress function so that it can update the progress indicator.
-            b2 <<- bootstrapfun(obsdata=m2, samplingdata=s_data, distmethod = input$dist, clustmethod= input$hclust, scale=input$norm, n=as.numeric(input$n2), k=as.numeric(input$cuttree2), n.iter=input$n_iter2, zlim=c(input$inSlider[1],input$inSlider[2]), sampler = "Row", updateProgress )
+            b2 <<- bootstrapfun(obsdata=m2, samplingdata=s_data, distmethod = input$dist, clustmethod= input$hclust, norm= input$norm, scale=input$norm2, n=as.numeric(input$n2), k=as.numeric(input$cuttree2), n.iter=input$n_iter2, zlim=c(input$inSlider[1],input$inSlider[2]), sampler = "Row", updateProgress )
           
             rhstring1 <- paste("&emsp;")
             rhstring2 <- paste("The p-value to test the sample significance in the separation of sample into 2 clusters is = =", em(b2$p.value), sep = " ")
