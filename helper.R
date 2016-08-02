@@ -42,13 +42,30 @@ zClust <- function(x, scale, zlim)
     z <- pmin(pmax(z,zlim[1]), zlim[2])
     return(list(data=z))
   }
- # else {
-#    return(list(as.matrix(data)))
-#  }
+  #else {
+   #return(list(data=as.numeric(as.matrix(data))))
+ #}
 }
 
+modzClust <- function(xx, scale, zlim)
+{
+  if(scale != "none")
+  {
+    if (scale=="row") zz <- (xx - rowMedians(xx)) / rowMads(xx)
+    if (scale=="col") zz <- (xx - colMedians(xx)) / colMads(xx)
+    if (scale=="both") {
+      zz <- (xx - rowMedians(xx)) / rowMads(xx) #row 
+      zz <- (zz - colMedians(zz)) / colMads(zz) # column scaling
+    }
+    zz <- pmin(pmax(zz,zlim[1]), zlim[2])
+    return(list(data=zz))
+  }
+  #else {
+  # return(list(data= as.matrix(data)))
+  #}
+}
 
-bootstrapfun <- function(obsdata, samplingdata, distmethod, clustmethod, scale, n, k, n.iter, zlim, sampler, updateProgress = NULL) #n is the sample size for the expected data
+bootstrapfun <- function(obsdata, samplingdata, distmethod, clustmethod, norm, scale, n, k, n.iter, zlim, sampler, updateProgress = NULL) #n is the sample size for the expected data
 {
   classfn.count.obs <- integer()
   names(obsdata)[1] <- "Sample"
@@ -107,8 +124,16 @@ bootstrapfun <- function(obsdata, samplingdata, distmethod, clustmethod, scale, 
         bootdata3 <- data.matrix(bootdata2)
         
         # Call HEATPLOT2 EQUIVALENT HEATMAP2 CLUSTERING function
-        mat <- zClust(bootdata3, scale, zlim )
+        if(norm == "Z-Score") {
+              mat <- zClust(bootdata3, scale, zlim)
+        } else if(norm == "Modified Z-Score") {
+             mat <- modzClust(bootdata3, scale, zlim )
+        } else if( norm == "none") {
+            mat <- as.matrix(bootdata3)
+        }
+          
         
+          
         if(distmethod == "pearson correlation") {
            # hm <- heatmap.2(as.matrix(mat[[1]]), Rowv=T, Colv=T, scale="none", hclust=function(x) hclust(x,method=clustmethod), distfun=function(x) as.dist((1-cor(t(x)))), margin = c(7,9), density.info=c("none"),trace=c("none"))
            # hc <- as.dendrogram(hm$colDendrogram)
